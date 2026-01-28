@@ -1,0 +1,65 @@
+# AWS Organization Baseline Configuration
+# Customize these values for your organization
+
+# Primary AWS region for state bucket and primary resources
+primary_region: "us-east-1"
+
+# Resource prefix for all resource names (S3 buckets, KMS keys, etc.)
+resource_prefix: "ccoe"
+
+# Tags applied to all resources created by this baseline
+tags:
+  owner: "william.brady"      # e.g., "platform-team" or "security-team"
+  contact: "will@crofton.cloud"    # e.g., "platform@example.com"
+
+# Shared account configuration
+# Each account requires an explicit email address
+shared_accounts:
+  log_archive:
+    name: "Log Archive"
+    # email: "will+orgxxxx-log-archive@crofton.cloud"
+
+  audit:
+    name: "Audit"
+    # email: "will+orgxxxx-audit@crofton.cloud"
+
+  # Optional: uncomment to create security tooling account
+  # security_tooling:
+  #   name: "security-tooling"
+  #   email: "will+orgxxxx-security-tooling@crofton.cloud"
+
+# Organizational Unit structure
+# Define your OU hierarchy here. Each OU can have nested children.
+organizational_units:
+  - name: Security
+    # Accounts placed here: log-archive, audit, security-tooling
+  - name: Production
+  - name: Non-Production
+  - name: Unmanaged
+    # For accounts not yet integrated into the baseline
+
+# VPC Block Public Access Configuration
+# Controls whether VPCs can have internet gateways and public IP addresses
+# Options:
+#   - ingress: Blocks inbound internet access, allows outbound (recommended)
+#   - bidirectional: Blocks both inbound and outbound internet access (most restrictive)
+#   - disabled: No VPC block public access restrictions (least secure)
+vpc_block_public_access:
+  mode: "disabled"
+
+# Security Hub configuration
+security_hub:
+  # Security standards to enable
+  # Available: aws-foundational, cis-1.2, cis-1.4, nist-800-53, pci-dss
+  standards:
+    - aws-foundational
+    - cis-1.4
+    - nist-800-53
+  # Controls to disable organization-wide
+  # Reference: https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-controls-reference.html
+  disabled_controls:
+    - CloudFormation.3  # CloudFormation stacks should have termination protection enabled
+    - CloudFormation.4  # CloudFormation stacks should have associated service roles
+    - S3.15             # S3 buckets should use Object Lock
+    - Macie.1           # Macie should be enabled
+    # - EC2.172           # EC2 VPC Block Public Access settings should block internet gateway traffic

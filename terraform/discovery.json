@@ -1,0 +1,79 @@
+{
+  "current_account_id": "987684849763",
+  "org_name": "rc-org12",
+  "primary_region": "us-east-1",
+  "organization_exists": true,
+  "organization_id": "o-2th7thfbo0",
+  "organization_arn": "arn:aws:organizations::987684849763:organization/o-2th7thfbo0",
+  "master_account_id": "987684849763",
+  "feature_set": "ALL",
+  "organizational_units": [
+    {
+      "id": "ou-gpuw-46jnq1k6",
+      "name": "NonProduction",
+      "arn": "arn:aws:organizations::987684849763:ou/o-2th7thfbo0/ou-gpuw-46jnq1k6",
+      "path": "NonProduction"
+    },
+    {
+      "id": "ou-gpuw-8f6nu8ef",
+      "name": "Unmanaged",
+      "arn": "arn:aws:organizations::987684849763:ou/o-2th7thfbo0/ou-gpuw-8f6nu8ef",
+      "path": "Unmanaged"
+    },
+    {
+      "id": "ou-gpuw-nuc4k3rx",
+      "name": "Production",
+      "arn": "arn:aws:organizations::987684849763:ou/o-2th7thfbo0/ou-gpuw-nuc4k3rx",
+      "path": "Production"
+    },
+    {
+      "id": "ou-gpuw-s25jm347",
+      "name": "Security",
+      "arn": "arn:aws:organizations::987684849763:ou/o-2th7thfbo0/ou-gpuw-s25jm347",
+      "path": "Security"
+    }
+  ],
+  "accounts": [
+    {
+      "id": "515358862152",
+      "name": "audit",
+      "email": "aws-rc-org12-audit@croftoncloud.com",
+      "status": "ACTIVE",
+      "joined_method": "CREATED"
+    },
+    {
+      "id": "987684849763",
+      "name": "rc-org12",
+      "email": "will+rc-org12@crofton.cloud",
+      "status": "ACTIVE",
+      "joined_method": "INVITED"
+    },
+    {
+      "id": "801795966772",
+      "name": "log-archive",
+      "email": "aws-rc-org12-log-archive@croftoncloud.com",
+      "status": "ACTIVE",
+      "joined_method": "CREATED"
+    }
+  ],
+  "delegated_admins": {
+    "securityhub.amazonaws.com": [
+      "515358862152"
+    ],
+    "guardduty.amazonaws.com": [
+      "515358862152"
+    ],
+    "config.amazonaws.com": [
+      "515358862152"
+    ],
+    "access-analyzer.amazonaws.com": [
+      "515358862152"
+    ]
+  },
+  "shared_accounts": {
+    "log_archive_account_id": "801795966772",
+    "audit_account_id": "515358862152",
+    "security_tooling_account_id": ""
+  },
+  "root_id": "r-gpuw"
+}
