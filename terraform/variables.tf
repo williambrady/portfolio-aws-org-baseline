@@ -197,3 +197,46 @@ variable "organization_config_exists" {
   type        = bool
   default     = false
 }
+
+# -----------------------------------------------------------------------------
+# Alternate Contacts Configuration
+# -----------------------------------------------------------------------------
+
+variable "enable_alternate_contacts" {
+  description = "Whether to enable alternate contacts for management and shared accounts"
+  type        = bool
+  default     = false
+}
+
+variable "billing_contact" {
+  description = "Billing alternate contact details"
+  type = object({
+    name  = string
+    title = string
+    email = string
+    phone = string
+  })
+  default = null
+}
+
+variable "operations_contact" {
+  description = "Operations alternate contact details"
+  type = object({
+    name  = string
+    title = string
+    email = string
+    phone = string
+  })
+  default = null
+}
+
+variable "security_contact" {
+  description = "Security alternate contact details"
+  type = object({
+    name  = string
+    title = string
+    email = string
+    phone = string
+  })
+  default = null
+}

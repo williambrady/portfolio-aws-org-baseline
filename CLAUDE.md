@@ -502,6 +502,7 @@ AWS_PROFILE=test-profile make apply
 
 - **No Claude Attribution** - Do not mention Claude, AI, or any AI assistant in commit messages, documentation, or code comments. Commits should appear as standard developer commits without AI attribution or "Generated with Claude" footers.
 - **Use python3** - Always use `python3` instead of `python` when executing Python scripts from the command line.
+- **Run pre-commit before pushing** - Always run `pre-commit run --all-files` before pushing changes to GitHub. Fix any issues found before pushing.
 
 ## Reference
 

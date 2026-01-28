@@ -47,6 +47,33 @@ organizational_units:
 vpc_block_public_access:
   mode: "disabled"
 
+# AWS Account Alternate Contacts Configuration
+# These contacts will be applied to the management account and shared accounts (log-archive, audit)
+alternate_contacts:
+  # Enable alternate contacts
+  enable_alternate_contacts: true
+
+  # Billing Contact - for billing and cost-related communications
+  billing_contact:
+    name: "Finance Department"
+    title: "FinOps Manager"
+    email: "will+finance@crofton.cloud"
+    phone: "+14434542892"
+
+  # Operations Contact - for operational and technical issues
+  operations_contact:
+    name: "Operations Department"
+    title: "Operations Manager"
+    email: "will+operations@crofton.cloud"
+    phone: "+14434542892"
+
+  # Security Contact - for security incidents and notifications
+  security_contact:
+    name: "William Brady"
+    title: "Cloud Security"
+    email: "will+security@crofton.cloud"
+    phone: "+14434542892"
+
 # Security Hub configuration
 security_hub:
   # Security standards to enable
