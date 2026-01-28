@@ -369,7 +369,8 @@ def load_terraform_outputs() -> dict:
         tf_dir = Path(__file__).parent.parent / "terraform"
 
     try:
-        result = subprocess.run(
+        # nosemgrep: python.lang.security.audit.subprocess-shell-true.subprocess-shell-true
+        result = subprocess.run(  # nosec B607 - runs in controlled Docker environment
             ["terraform", "output", "-json"],
             cwd=tf_dir,
             capture_output=True,

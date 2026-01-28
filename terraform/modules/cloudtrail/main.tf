@@ -237,6 +237,7 @@ resource "aws_iam_role_policy" "cloudtrail_cloudwatch" {
 # Organization CloudTrail
 # -----------------------------------------------------------------------------
 
+# checkov:skip=CKV_AWS_252:SNS topic not configured - no consumption pipeline established yet
 resource "aws_cloudtrail" "organization" {
   name                          = "${var.resource_prefix}-organization-trail"
   s3_bucket_name                = module.bucket.bucket_id

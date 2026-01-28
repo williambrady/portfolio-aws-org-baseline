@@ -23,7 +23,8 @@ def check_terraform_state_for_resource(resource_address: str) -> bool:
     Returns True if the resource is in state, False otherwise.
     """
     try:
-        result = subprocess.run(
+        # nosemgrep: python.lang.security.audit.subprocess-shell-true.subprocess-shell-true
+        result = subprocess.run(  # nosec B607 - runs in controlled Docker environment
             ["terraform", "state", "list"],
             capture_output=True,
             text=True,

@@ -14,6 +14,9 @@ terraform {
 # S3 Bucket
 # -----------------------------------------------------------------------------
 
+# checkov:skip=CKV_AWS_18:Logging is conditionally enabled - disabled for access logging buckets to prevent circular dependency
+# checkov:skip=CKV_AWS_21:Event notifications not configured - no consumption pipeline established yet
+# checkov:skip=CKV_AWS_144:Cross-region replication not required for this baseline
 resource "aws_s3_bucket" "main" {
   bucket = var.bucket_name
 
@@ -44,9 +47,9 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "main" {
   rule {
     apply_server_side_encryption_by_default {
       kms_master_key_id = var.kms_key_arn
-      sse_algorithm     = var.kms_key_arn != null ? "aws:kms" : "AES256"
+      sse_algorithm     = "aws:kms"
     }
-    bucket_key_enabled = var.kms_key_arn != null ? true : false
+    bucket_key_enabled = true
   }
 }
 
@@ -119,12 +122,25 @@ resource "aws_s3_bucket_policy" "main" {
 # -----------------------------------------------------------------------------
 
 resource "aws_s3_bucket_lifecycle_configuration" "main" {
-  count = var.lifecycle_rules != null ? 1 : 0
-
   bucket = aws_s3_bucket.main.id
 
+  # Always abort incomplete multipart uploads after 7 days
+  rule {
+    id     = "abort-incomplete-multipart-uploads"
+    status = "Enabled"
+
+    filter {
+      prefix = ""
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
+
+  # Custom lifecycle rules
   dynamic "rule" {
-    for_each = var.lifecycle_rules
+    for_each = var.lifecycle_rules != null ? var.lifecycle_rules : []
     content {
       id     = rule.value.id
       status = rule.value.status
@@ -171,6 +187,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "main" {
 # Required for S3 access logging to work properly
 # -----------------------------------------------------------------------------
 
+# checkov:skip=CKV2_AWS_65:ACLs required for S3 access logging buckets - only enabled when is_access_logging_bucket=true
 resource "aws_s3_bucket_ownership_controls" "main" {
   count = var.is_access_logging_bucket ? 1 : 0
 

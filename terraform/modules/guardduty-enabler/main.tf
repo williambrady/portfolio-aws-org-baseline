@@ -20,6 +20,7 @@ data "aws_region" "current" {}
 # GuardDuty Detector
 # -----------------------------------------------------------------------------
 
+# checkov:skip=CKV2_AWS_3:GuardDuty is enabled per-region via this enabler module pattern
 resource "aws_guardduty_detector" "main" {
   enable                       = true
   finding_publishing_frequency = "FIFTEEN_MINUTES"

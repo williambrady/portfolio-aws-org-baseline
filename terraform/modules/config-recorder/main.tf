@@ -31,6 +31,7 @@ resource "aws_iam_service_linked_role" "config" {
 # Config Recorder
 # -----------------------------------------------------------------------------
 
+# checkov:skip=CKV_AWS_346:Global resources recorded only in home region to avoid duplication
 resource "aws_config_configuration_recorder" "main" {
   name     = var.recorder_name
   role_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/config.amazonaws.com/AWSServiceRoleForConfig"

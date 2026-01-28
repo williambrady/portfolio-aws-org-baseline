@@ -6,9 +6,8 @@ variable "bucket_name" {
 }
 
 variable "kms_key_arn" {
-  description = "ARN of the KMS key for bucket encryption. If null, uses AES256."
+  description = "ARN of the KMS key for bucket encryption (required)"
   type        = string
-  default     = null
 }
 
 variable "versioning_enabled" {
