@@ -1636,7 +1636,9 @@ def main():
         "operations_contact": config.get("alternate_contacts", {}).get(
             "operations_contact"
         ),
-        "security_contact": config.get("alternate_contacts", {}).get("security_contact"),
+        "security_contact": config.get("alternate_contacts", {}).get(
+            "security_contact"
+        ),
     }
 
     tfvars_path = Path("/work/terraform/bootstrap.auto.tfvars.json")
