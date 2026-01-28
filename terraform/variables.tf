@@ -25,18 +25,6 @@ variable "organization_exists" {
   default     = false
 }
 
-variable "organization_id" {
-  description = "Existing organization ID (from discovery)"
-  type        = string
-  default     = ""
-}
-
-variable "master_account_id" {
-  description = "Management account ID (from discovery)"
-  type        = string
-  default     = ""
-}
-
 variable "root_id" {
   description = "Organization root ID (from discovery)"
   type        = string
@@ -210,50 +198,3 @@ variable "organization_config_exists" {
   default     = false
 }
 
-# -----------------------------------------------------------------------------
-# Inspector Discovery (from discover.py)
-# -----------------------------------------------------------------------------
-
-variable "inspector_org_exists" {
-  description = "Whether Inspector organization configuration already exists (from discovery). Used for informational purposes."
-  type        = bool
-  default     = false
-}
-
-variable "inspector_delegated_admin" {
-  description = "Existing Inspector delegated admin account ID (from discovery). Empty if not configured."
-  type        = string
-  default     = ""
-}
-
-# -----------------------------------------------------------------------------
-# GuardDuty Discovery (from discover.py)
-# -----------------------------------------------------------------------------
-
-variable "guardduty_org_exists" {
-  description = "Whether GuardDuty organization configuration already exists (from discovery). Used for informational purposes."
-  type        = bool
-  default     = false
-}
-
-variable "guardduty_delegated_admin" {
-  description = "Existing GuardDuty delegated admin account ID (from discovery). Empty if not configured."
-  type        = string
-  default     = ""
-}
-
-# -----------------------------------------------------------------------------
-# Security Hub Discovery (from discover.py)
-# -----------------------------------------------------------------------------
-
-variable "securityhub_org_exists" {
-  description = "Whether Security Hub organization configuration already exists (from discovery). Used for informational purposes."
-  type        = bool
-  default     = false
-}
-
-variable "securityhub_discovered_delegated_admin" {
-  description = "Existing Security Hub delegated admin account ID (from discovery). Empty if not configured."
-  type        = string
-  default     = ""
-}

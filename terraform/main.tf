@@ -10,7 +10,6 @@
 # -----------------------------------------------------------------------------
 
 data "aws_caller_identity" "current" {}
-data "aws_region" "current" {}
 
 # -----------------------------------------------------------------------------
 # Local Values
@@ -19,9 +18,8 @@ data "aws_region" "current" {}
 locals {
   # Account IDs from discovery (for provider configuration - known at plan time)
   # These are populated by the discovery script when accounts already exist
-  log_archive_account_id      = var.log_archive_account_id
-  audit_account_id            = var.audit_account_id
-  security_tooling_account_id = var.security_tooling_account_id
+  log_archive_account_id = var.log_archive_account_id
+  audit_account_id       = var.audit_account_id
 
   # Whether accounts exist (from discovery) - controls cross-account resource creation
   # On first run for a fresh org, these will be empty and cross-account resources will be skipped
@@ -185,7 +183,6 @@ module "organization" {
   security_ou_name        = var.security_ou_name
   audit_account_id        = local.audit_account_id
   create_delegated_admins = local.accounts_exist
-  common_tags             = local.common_tags
 }
 
 # -----------------------------------------------------------------------------
@@ -239,16 +236,13 @@ module "security_hub" {
     aws.audit = aws.audit
   }
 
-  resource_prefix        = var.resource_prefix
-  primary_region         = var.primary_region
-  root_id                = module.organization.root_id
-  management_account_id  = data.aws_caller_identity.current.account_id
-  audit_account_id       = local.audit_account_id
-  log_archive_account_id = local.log_archive_account_id
+  resource_prefix   = var.resource_prefix
+  primary_region    = var.primary_region
+  root_id           = module.organization.root_id
+  audit_account_id  = local.audit_account_id
 
   standards         = var.securityhub_standards
   disabled_controls = var.securityhub_disabled_controls
-  common_tags       = local.common_tags
 }
 
 # -----------------------------------------------------------------------------

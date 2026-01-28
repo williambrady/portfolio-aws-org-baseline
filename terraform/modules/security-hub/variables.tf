@@ -10,18 +10,8 @@ variable "root_id" {
   type        = string
 }
 
-variable "management_account_id" {
-  description = "Management account ID"
-  type        = string
-}
-
 variable "audit_account_id" {
   description = "Audit account ID (delegated admin)"
-  type        = string
-}
-
-variable "log_archive_account_id" {
-  description = "Log archive account ID"
   type        = string
 }
 
@@ -40,10 +30,4 @@ variable "disabled_controls" {
   description = "List of Security Hub control IDs to disable organization-wide (e.g., S3.15, CloudFormation.4)"
   type        = list(string)
   default     = []
-}
-
-variable "common_tags" {
-  description = "Common tags to apply to all resources"
-  type        = map(string)
-  default     = {}
 }
