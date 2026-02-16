@@ -593,8 +593,9 @@ def main():
 
     # Get account IDs from discovery or config
     mgmt_account_id = discovery.get("master_account_id", "")
-    log_archive_account_id = discovery.get("log_archive_account_id", "")
-    audit_account_id = discovery.get("audit_account_id", "")
+    shared = discovery.get("shared_accounts", {})
+    log_archive_account_id = shared.get("log_archive_account_id", "")
+    audit_account_id = shared.get("audit_account_id", "")
 
     # If management account not in discovery, get from STS
     if not mgmt_account_id:
