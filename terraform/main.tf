@@ -53,6 +53,24 @@ module "kms_tfstate" {
   common_tags = local.common_tags
 }
 
+# KMS key for S3 access logs bucket (management account)
+module "kms_access_logs" {
+  source = "./modules/kms"
+
+  alias_name  = "${var.resource_prefix}-access-logs"
+  description = "KMS key for S3 access logs bucket encryption"
+  common_tags = local.common_tags
+}
+
+# KMS key for deployment artifacts bucket (management account)
+module "kms_deployment_artifacts" {
+  source = "./modules/kms"
+
+  alias_name  = "${var.resource_prefix}-deployment-artifacts"
+  description = "KMS key for deployment artifacts bucket encryption"
+  common_tags = local.common_tags
+}
+
 # KMS key for CloudTrail (log archive account) - only when creating CloudTrail
 module "kms_cloudtrail" {
   source = "./modules/kms"
@@ -118,7 +136,7 @@ module "s3_access_logs" {
   source = "./modules/s3"
 
   bucket_name              = "${var.resource_prefix}-access-logs-${data.aws_caller_identity.current.account_id}"
-  kms_key_arn              = module.kms_tfstate.key_arn
+  kms_key_arn              = module.kms_access_logs.key_arn
   versioning_enabled       = true
   enforce_ssl              = true
   is_access_logging_bucket = true # Prevents logging to itself
@@ -224,6 +242,56 @@ module "s3_tfstate" {
 }
 
 # -----------------------------------------------------------------------------
+# S3 Deployment Artifacts Module
+# Stores deployment logs and outputs for auditing and debugging
+# -----------------------------------------------------------------------------
+
+module "s3_deployment_artifacts" {
+  source = "./modules/s3"
+
+  bucket_name            = "${var.resource_prefix}-deployment-artifacts-${data.aws_caller_identity.current.account_id}"
+  kms_key_arn            = module.kms_deployment_artifacts.key_arn
+  versioning_enabled     = true
+  enforce_ssl            = true
+  access_logging_enabled = true
+  access_logging_bucket  = module.s3_access_logs.bucket_id
+  access_logging_prefix  = "deployment-artifacts/"
+
+  lifecycle_rules = [
+    {
+      id     = "artifacts-lifecycle"
+      status = "Enabled"
+      transitions = [
+        { days = 30, storage_class = "STANDARD_IA" },
+        { days = 90, storage_class = "GLACIER" }
+      ]
+      expiration_days = 365
+    }
+  ]
+
+  common_tags = local.common_tags
+}
+
+# -----------------------------------------------------------------------------
+# Deployment Logs
+# CloudWatch Log Group for real-time deployment log streaming
+# Created by entrypoint.sh before Terraform runs; managed here for lifecycle control
+# -----------------------------------------------------------------------------
+
+resource "aws_cloudwatch_log_group" "deployments" {
+  name              = "/${var.resource_prefix}/deployments"
+  retention_in_days = 365
+
+  tags = merge(local.common_tags, {
+    Name = "${var.resource_prefix}-deployment-logs"
+  })
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+# -----------------------------------------------------------------------------
 # Security Hub Module - only when accounts exist
 # -----------------------------------------------------------------------------
 
@@ -243,6 +311,8 @@ module "security_hub" {
 
   standards         = var.securityhub_standards
   disabled_controls = var.securityhub_disabled_controls
+
+  depends_on = [module.organization]
 }
 
 # -----------------------------------------------------------------------------
@@ -430,6 +500,7 @@ module "alternate_contacts_management" {
 }
 
 # Log archive account alternate contacts - only when accounts exist
+# depends_on ensures trusted access for account.amazonaws.com is enabled first
 module "alternate_contacts_log_archive" {
   source = "./modules/alternate-contacts"
   count  = local.accounts_exist && local.alternate_contacts_valid ? 1 : 0
@@ -440,9 +511,12 @@ module "alternate_contacts_log_archive" {
   billing_contact           = var.billing_contact
   operations_contact        = var.operations_contact
   security_contact          = var.security_contact
+
+  depends_on = [module.organization]
 }
 
 # Audit account alternate contacts - only when accounts exist
+# depends_on ensures trusted access for account.amazonaws.com is enabled first
 module "alternate_contacts_audit" {
   source = "./modules/alternate-contacts"
   count  = local.accounts_exist && local.alternate_contacts_valid ? 1 : 0
@@ -453,4 +527,6 @@ module "alternate_contacts_audit" {
   billing_contact           = var.billing_contact
   operations_contact        = var.operations_contact
   security_contact          = var.security_contact
+
+  depends_on = [module.organization]
 }

@@ -1,4 +1,4 @@
-.PHONY: build test lint discover plan apply destroy shell state-cleanup clean help
+.PHONY: build test lint discover plan apply destroy shell clean help
 
 IMAGE_NAME := portfolio-aws-org-baseline
 IMAGE_TAG := dev
@@ -8,6 +8,9 @@ IMAGE_TAG := dev
 DOCKER_ENV := -e AWS_PROFILE=$(AWS_PROFILE)
 ifdef VPC_BLOCK_MODE
 DOCKER_ENV += -e VPC_BLOCK_MODE=$(VPC_BLOCK_MODE)
+endif
+ifdef SKIP_VPC_CLEANUP
+DOCKER_ENV += -e SKIP_VPC_CLEANUP=$(SKIP_VPC_CLEANUP)
 endif
 
 # Default target
@@ -23,7 +26,8 @@ help:
 	@echo ""
 	@echo "Environment variables:"
 	@echo "  AWS_PROFILE    - AWS profile to use (required)"
-	@echo "  VPC_BLOCK_MODE - Override vpc_block_public_access.mode (ingress, bidirectional, disabled)"
+	@echo "  VPC_BLOCK_MODE   - Override vpc_block_public_access.mode (ingress, bidirectional, disabled)"
+	@echo "  SKIP_VPC_CLEANUP - Skip default VPC cleanup to speed up iteration (true/false)"
 
 # Build the Docker image
 build:
@@ -64,13 +68,6 @@ shell: build
 		$(DOCKER_ENV) \
 		--entrypoint /bin/bash \
 		$(IMAGE_NAME):$(IMAGE_TAG)
-
-# Remove old GuardDuty detectors from Terraform state (one-time migration)
-state-cleanup: build
-	docker run --rm \
-		-v "$(HOME)/.aws:/home/baseline/.aws:ro" \
-		$(DOCKER_ENV) \
-		$(IMAGE_NAME):$(IMAGE_TAG) state-cleanup
 
 # Clean up Docker image
 clean:

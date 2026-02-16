@@ -90,6 +90,30 @@ output "kms_config_key_arn" {
   value       = length(module.kms_config) > 0 ? module.kms_config[0].key_arn : null
 }
 
+output "kms_access_logs_key_arn" {
+  description = "The KMS key ARN for access logs bucket encryption"
+  value       = module.kms_access_logs.key_arn
+}
+
+output "kms_deployment_artifacts_key_arn" {
+  description = "The KMS key ARN for deployment artifacts bucket encryption"
+  value       = module.kms_deployment_artifacts.key_arn
+}
+
+# -----------------------------------------------------------------------------
+# Deployment Artifacts
+# -----------------------------------------------------------------------------
+
+output "deployment_artifacts_bucket_name" {
+  description = "The name of the deployment artifacts bucket"
+  value       = module.s3_deployment_artifacts.bucket_id
+}
+
+output "deployment_artifacts_bucket_arn" {
+  description = "The ARN of the deployment artifacts bucket"
+  value       = module.s3_deployment_artifacts.bucket_arn
+}
+
 # -----------------------------------------------------------------------------
 # Security Hub (conditional - only when accounts exist)
 # -----------------------------------------------------------------------------
@@ -249,10 +273,13 @@ output "organization_summary" {
       kms_key              = module.kms_config[0].key_arn
     } : null
     kms_keys = {
-      tfstate    = module.kms_tfstate.key_arn
-      cloudtrail = length(module.kms_cloudtrail) > 0 ? module.kms_cloudtrail[0].key_arn : null
-      config     = length(module.kms_config) > 0 ? module.kms_config[0].key_arn : null
+      tfstate              = module.kms_tfstate.key_arn
+      access_logs          = module.kms_access_logs.key_arn
+      deployment_artifacts = module.kms_deployment_artifacts.key_arn
+      cloudtrail           = length(module.kms_cloudtrail) > 0 ? module.kms_cloudtrail[0].key_arn : null
+      config               = length(module.kms_config) > 0 ? module.kms_config[0].key_arn : null
     }
+    deployment_log_group = aws_cloudwatch_log_group.deployments.name
     iam_password_policy = {
       minimum_length      = module.iam_password_policy_management.minimum_password_length
       reuse_prevention    = module.iam_password_policy_management.password_reuse_prevention

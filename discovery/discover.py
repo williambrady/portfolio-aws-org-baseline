@@ -79,7 +79,7 @@ def load_config() -> dict:
         print("Warning: config.yaml not found, using defaults")
         config = {"primary_region": "us-east-1", "resource_prefix": "org-baseline"}
     else:
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             config = yaml.safe_load(f)
 
     # Validate required fields
@@ -213,7 +213,6 @@ def discover_delegated_admins(org_client) -> dict:
         "config.amazonaws.com",
         "access-analyzer.amazonaws.com",
         "inspector2.amazonaws.com",
-        "guardduty.amazonaws.com",
     ]
 
     for service in services:
@@ -380,122 +379,6 @@ def discover_inspector_org_config(primary_region: str, audit_account_id: str) ->
     return result
 
 
-def discover_guardduty_org_config(primary_region: str, audit_account_id: str) -> dict:
-    """Discover existing GuardDuty organization configuration.
-
-    Returns information about GuardDuty organization status:
-    - Whether GuardDuty is enabled organization-wide
-    - The delegated admin account ID
-    - Whether auto-enable is configured
-
-    If GuardDuty is already enabled with the expected delegated admin (audit account),
-    we set guardduty_org_exists=True to avoid conflicts.
-    """
-    result = {
-        "guardduty_org_exists": False,
-        "guardduty_delegated_admin": "",
-        "guardduty_auto_enable": False,
-        "guardduty_s3_protection": False,
-        "guardduty_eks_protection": False,
-        "guardduty_malware_protection": False,
-    }
-
-    try:
-        # Check delegated admin status using Organizations API (more reliable)
-        org_client = boto3.client("organizations", region_name=primary_region)
-        try:
-            response = org_client.list_delegated_administrators(
-                ServicePrincipal="guardduty.amazonaws.com"
-            )
-            admins = response.get("DelegatedAdministrators", [])
-            if admins:
-                result["guardduty_delegated_admin"] = admins[0]["Id"]
-                result["guardduty_org_exists"] = True
-                print(f"    Delegated Admin: {result['guardduty_delegated_admin']}")
-
-                # If we have a delegated admin, check organization configuration
-                if result["guardduty_delegated_admin"] == audit_account_id:
-                    try:
-                        sts_client = boto3.client("sts", region_name=primary_region)
-                        assumed = sts_client.assume_role(
-                            RoleArn=f"arn:aws:iam::{audit_account_id}:role/OrganizationAccountAccessRole",
-                            RoleSessionName="guardduty-discovery",
-                        )
-                        creds = assumed["Credentials"]
-                        audit_guardduty = boto3.client(
-                            "guardduty",
-                            region_name=primary_region,
-                            aws_access_key_id=creds["AccessKeyId"],
-                            aws_secret_access_key=creds["SecretAccessKey"],
-                            aws_session_token=creds["SessionToken"],
-                        )
-
-                        # Get detector ID in audit account
-                        detectors = audit_guardduty.list_detectors()
-                        if detectors.get("DetectorIds"):
-                            detector_id = detectors["DetectorIds"][0]
-
-                            # Get organization configuration
-                            org_config = (
-                                audit_guardduty.describe_organization_configuration(
-                                    DetectorId=detector_id
-                                )
-                            )
-                            result["guardduty_auto_enable"] = (
-                                org_config.get("AutoEnable", False)
-                                or org_config.get("AutoEnableOrganizationMembers", "")
-                                == "ALL"
-                            )
-
-                            # Check data sources
-                            datasources = org_config.get("DataSources", {})
-                            s3_logs = datasources.get("S3Logs", {})
-                            result["guardduty_s3_protection"] = s3_logs.get(
-                                "AutoEnable", False
-                            )
-
-                            kubernetes = datasources.get("Kubernetes", {})
-                            audit_logs = kubernetes.get("AuditLogs", {})
-                            result["guardduty_eks_protection"] = audit_logs.get(
-                                "AutoEnable", False
-                            )
-
-                            malware = datasources.get("MalwareProtection", {})
-                            scan_ec2 = malware.get("ScanEc2InstanceWithFindings", {})
-                            ebs = scan_ec2.get("EbsVolumes", {})
-                            result["guardduty_malware_protection"] = ebs.get(
-                                "AutoEnable", False
-                            )
-
-                            enabled = []
-                            if result["guardduty_auto_enable"]:
-                                enabled.append("AutoEnable=ALL")
-                            if result["guardduty_s3_protection"]:
-                                enabled.append("S3")
-                            if result["guardduty_eks_protection"]:
-                                enabled.append("EKS")
-                            if result["guardduty_malware_protection"]:
-                                enabled.append("Malware")
-                            if enabled:
-                                print(f"    Protection plans: {', '.join(enabled)}")
-                            else:
-                                print("    Protection plans: None auto-enabled")
-                    except ClientError as e:
-                        print(
-                            f"    Warning: Could not check org config from audit account: {e}"
-                        )
-            else:
-                print("    Delegated Admin: None configured")
-        except ClientError as e:
-            if "AccessDenied" not in str(e):
-                print(f"    Warning: Could not list delegated admins: {e}")
-
-    except ClientError as e:
-        print(f"    Warning: Could not check GuardDuty status: {e}")
-
-    return result
-
-
 def discover_security_hub_org_config(
     primary_region: str, audit_account_id: str
 ) -> dict:
@@ -604,46 +487,67 @@ def discover_kms_keys(
     """Discover existing KMS keys that match our naming pattern.
 
     Checks for KMS keys that would be created by the baseline:
-    - {resource_prefix}-tfstate-key (management account)
-    - {resource_prefix}-cloudtrail-key (log-archive account)
-    - {resource_prefix}-config-key (log-archive account)
+    Management account (created by bootstrap):
+    - {resource_prefix}-tfstate
+    - {resource_prefix}-access-logs
+    - {resource_prefix}-deployment-artifacts
+    Log-archive account (created by Terraform in phase 2):
+    - {resource_prefix}-cloudtrail
+    - {resource_prefix}-config
     """
     result = {
         "kms_tfstate_exists": False,
         "kms_tfstate_arn": "",
+        "kms_access_logs_exists": False,
+        "kms_access_logs_arn": "",
+        "kms_deployment_artifacts_exists": False,
+        "kms_deployment_artifacts_arn": "",
         "kms_cloudtrail_exists": False,
         "kms_cloudtrail_arn": "",
         "kms_config_exists": False,
         "kms_config_arn": "",
     }
 
-    # Check management account for tfstate key
+    # Management account keys (bootstrap creates these: tfstate, access-logs,
+    # deployment-artifacts)
+    mgmt_keys = {
+        f"alias/{resource_prefix}-tfstate": ("kms_tfstate", "tfstate"),
+        f"alias/{resource_prefix}-access-logs": ("kms_access_logs", "access-logs"),
+        f"alias/{resource_prefix}-deployment-artifacts": (
+            "kms_deployment_artifacts",
+            "deployment-artifacts",
+        ),
+    }
+
     try:
         kms_client = boto3.client("kms", region_name=primary_region)
-        paginator = kms_client.get_paginator("list_aliases")
-        for page in paginator.paginate():
-            for alias in page.get("Aliases", []):
-                alias_name = alias.get("AliasName", "")
-                if alias_name == f"alias/{resource_prefix}-tfstate-key":
-                    result["kms_tfstate_exists"] = True
-                    result["kms_tfstate_arn"] = alias.get("TargetKeyId", "")
-                    # Get full ARN
-                    try:
-                        key_info = kms_client.describe_key(KeyId=alias["TargetKeyId"])
-                        result["kms_tfstate_arn"] = key_info["KeyMetadata"]["Arn"]
-                        print(f"    tfstate key: {result['kms_tfstate_arn']}")
-                    except ClientError:
-                        pass
-                    break
+        for alias_name, (key_prefix, label) in mgmt_keys.items():
+            try:
+                key_info = kms_client.describe_key(KeyId=alias_name)
+                result[f"{key_prefix}_exists"] = True
+                result[f"{key_prefix}_arn"] = key_info["KeyMetadata"]["Arn"]
+                print(f"    {label} key: {result[f'{key_prefix}_arn']}")
+            except ClientError as e:
+                if e.response["Error"]["Code"] != "NotFoundException":
+                    print(f"    Warning: Could not check {label} key: {e}")
     except ClientError as e:
         print(f"    Warning: Could not check KMS keys in management account: {e}")
 
-    # Check log-archive account for cloudtrail and config keys
+    # Log-archive account keys (Terraform creates these in phase 2: cloudtrail,
+    # config)
     if log_archive_account_id:
+        log_keys = {
+            f"alias/{resource_prefix}-cloudtrail": ("kms_cloudtrail", "cloudtrail"),
+            f"alias/{resource_prefix}-config": ("kms_config", "config"),
+        }
+
         try:
             sts_client = boto3.client("sts", region_name=primary_region)
             assumed = sts_client.assume_role(
-                RoleArn=f"arn:aws:iam::{log_archive_account_id}:role/OrganizationAccountAccessRole",
+                RoleArn=(
+                    f"arn:aws:iam::{log_archive_account_id}"
+                    ":role/OrganizationAccountAccessRole"
+                ),
                 RoleSessionName="kms-discovery",
             )
             creds = assumed["Credentials"]
@@ -655,42 +559,24 @@ def discover_kms_keys(
                 aws_session_token=creds["SessionToken"],
             )
 
-            paginator = log_kms_client.get_paginator("list_aliases")
-            for page in paginator.paginate():
-                for alias in page.get("Aliases", []):
-                    alias_name = alias.get("AliasName", "")
-                    if alias_name == f"alias/{resource_prefix}-cloudtrail-key":
-                        result["kms_cloudtrail_exists"] = True
-                        try:
-                            key_info = log_kms_client.describe_key(
-                                KeyId=alias["TargetKeyId"]
-                            )
-                            result["kms_cloudtrail_arn"] = key_info["KeyMetadata"][
-                                "Arn"
-                            ]
-                            print(f"    cloudtrail key: {result['kms_cloudtrail_arn']}")
-                        except ClientError:
-                            pass
-                    elif alias_name == f"alias/{resource_prefix}-config-key":
-                        result["kms_config_exists"] = True
-                        try:
-                            key_info = log_kms_client.describe_key(
-                                KeyId=alias["TargetKeyId"]
-                            )
-                            result["kms_config_arn"] = key_info["KeyMetadata"]["Arn"]
-                            print(f"    config key: {result['kms_config_arn']}")
-                        except ClientError:
-                            pass
+            for alias_name, (key_prefix, label) in log_keys.items():
+                try:
+                    key_info = log_kms_client.describe_key(KeyId=alias_name)
+                    result[f"{key_prefix}_exists"] = True
+                    result[f"{key_prefix}_arn"] = key_info["KeyMetadata"]["Arn"]
+                    print(f"    {label} key: {result[f'{key_prefix}_arn']}")
+                except ClientError as e:
+                    if e.response["Error"]["Code"] != "NotFoundException":
+                        print(f"    Warning: Could not check {label} key: {e}")
         except ClientError as e:
-            print(f"    Warning: Could not check KMS keys in log-archive account: {e}")
+            print(
+                f"    Warning: Could not check KMS keys in log-archive account: {e}"
+            )
 
-    if not any(
-        [
-            result["kms_tfstate_exists"],
-            result["kms_cloudtrail_exists"],
-            result["kms_config_exists"],
-        ]
-    ):
+    found_any = any(
+        result[k] for k in result if k.endswith("_exists")
+    )
+    if not found_any:
         print("    (no baseline KMS keys found)")
 
     return result
@@ -1344,30 +1230,6 @@ def main():
         discovery["inspector_delegated_admin"] = ""
     print("")
 
-    # Discover GuardDuty organization configuration
-    print("GuardDuty Organization:")
-    if audit_account_id:
-        guardduty_info = discover_guardduty_org_config(primary_region, audit_account_id)
-        discovery["guardduty_org_exists"] = guardduty_info["guardduty_org_exists"]
-        discovery["guardduty_delegated_admin"] = guardduty_info[
-            "guardduty_delegated_admin"
-        ]
-        discovery["guardduty_auto_enable"] = guardduty_info["guardduty_auto_enable"]
-        discovery["guardduty_s3_protection"] = guardduty_info["guardduty_s3_protection"]
-        discovery["guardduty_eks_protection"] = guardduty_info[
-            "guardduty_eks_protection"
-        ]
-        discovery["guardduty_malware_protection"] = guardduty_info[
-            "guardduty_malware_protection"
-        ]
-        if not guardduty_info["guardduty_org_exists"]:
-            print("    (not configured - will be set up)")
-    else:
-        print("    (skipped - audit account not identified)")
-        discovery["guardduty_org_exists"] = False
-        discovery["guardduty_delegated_admin"] = ""
-    print("")
-
     # Discover Security Hub organization configuration
     print("Security Hub Organization:")
     if audit_account_id:
@@ -1406,12 +1268,8 @@ def main():
     kms_info = discover_kms_keys(
         primary_region, resource_prefix, log_archive_account_id
     )
-    discovery["kms_tfstate_exists"] = kms_info["kms_tfstate_exists"]
-    discovery["kms_tfstate_arn"] = kms_info["kms_tfstate_arn"]
-    discovery["kms_cloudtrail_exists"] = kms_info["kms_cloudtrail_exists"]
-    discovery["kms_cloudtrail_arn"] = kms_info["kms_cloudtrail_arn"]
-    discovery["kms_config_exists"] = kms_info["kms_config_exists"]
-    discovery["kms_config_arn"] = kms_info["kms_config_arn"]
+    for key in kms_info:
+        discovery[key] = kms_info[key]
     print("")
 
     # Discover Config recorder status in core accounts
@@ -1458,6 +1316,31 @@ def main():
     print("SSM Settings:")
     ssm_info = discover_ssm_settings(primary_region)
     discovery["ssm_public_sharing_blocked"] = ssm_info["ssm_public_sharing_blocked"]
+    print("")
+
+    # Discover deployment log group
+    print("Deployment Log Group:")
+    deployment_lg_name = f"/{resource_prefix}/deployments"
+    try:
+        logs_client = boto3.client("logs", region_name=primary_region)
+        response = logs_client.describe_log_groups(
+            logGroupNamePrefix=deployment_lg_name, limit=1
+        )
+        matching = [
+            lg
+            for lg in response.get("logGroups", [])
+            if lg["logGroupName"] == deployment_lg_name
+        ]
+        if matching:
+            discovery["deployment_log_group_exists"] = True
+            retention = matching[0].get("retentionInDays", "never")
+            print(f"    Found: {deployment_lg_name} (retention: {retention} days)")
+        else:
+            discovery["deployment_log_group_exists"] = False
+            print("    (not found - will be created)")
+    except ClientError:
+        discovery["deployment_log_group_exists"] = False
+        print("    (not found - will be created)")
     print("")
 
     # Get root ID for OUs
@@ -1582,8 +1465,6 @@ def main():
         "resource_prefix": resource_prefix,
         "primary_region": primary_region,
         "organization_exists": discovery["organization_exists"],
-        "organization_id": discovery["organization_id"],
-        "master_account_id": discovery["master_account_id"],
         "root_id": root_id,
         # Account names and emails from config
         "log_archive_account_name": log_archive_name,
@@ -1617,16 +1498,9 @@ def main():
         "organization_config_exists": discovery.get(
             "organization_config_exists", False
         ),
-        # Inspector discovery
-        "inspector_org_exists": discovery.get("inspector_org_exists", False),
-        "inspector_delegated_admin": discovery.get("inspector_delegated_admin", ""),
-        # GuardDuty discovery
-        "guardduty_org_exists": discovery.get("guardduty_org_exists", False),
-        "guardduty_delegated_admin": discovery.get("guardduty_delegated_admin", ""),
-        # Security Hub discovery
-        "securityhub_org_exists": discovery.get("securityhub_org_exists", False),
-        "securityhub_discovered_delegated_admin": discovery.get(
-            "securityhub_delegated_admin", ""
+        # Deployment log group discovery
+        "deployment_log_group_exists": discovery.get(
+            "deployment_log_group_exists", False
         ),
     }
 
@@ -1659,13 +1533,13 @@ def main():
     tfvars["security_contact"] = security_contact
 
     tfvars_path = Path("/work/terraform/bootstrap.auto.tfvars.json")
-    with open(tfvars_path, "w") as f:
+    with open(tfvars_path, "w", encoding="utf-8") as f:
         json.dump(tfvars, f, indent=2)
     print(f"Written: {tfvars_path}")
 
     # Also write full discovery for reference
     discovery_path = Path("/work/terraform/discovery.json")
-    with open(discovery_path, "w") as f:
+    with open(discovery_path, "w", encoding="utf-8") as f:
         json.dump(discovery, f, indent=2, default=str)
     print(f"Written: {discovery_path}")
 

@@ -1,0 +1,50 @@
+# Terraform
+.terraform/
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+crash.*.log
+*.auto.tfvars.json
+discovery.json
+.terraform.lock.hcl
+**/.terraform.lock.hcl
+
+# Git
+.git/
+
+# Python
+__pycache__/
+*.py[codz]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+*.egg-info/
+
+# IDE / Editor
+.vscode/
+.idea/
+.claude/
+
+# CI/CD
+.github/
+
+# Documentation
+*.md
+LICENSE
+
+# Pre-commit
+.pre-commit-config.yaml
+
+# Linting config
+.flake8
+.pylintrc
+.tflint.hcl
+.terraform-docs.yml
+
+# Scripts (not needed in container)
+scripts/

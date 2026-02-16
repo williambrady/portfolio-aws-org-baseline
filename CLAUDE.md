@@ -66,7 +66,7 @@ portfolio-aws-org-baseline/
 │       ├── config-recorder/      # Single-region Config recorder module
 │       ├── inspector/            # AWS Inspector org configuration
 │       ├── inspector-enabler/    # Single-region Inspector enabler
-│       ├── guardduty-enabler/    # Single-region GuardDuty enabler
+│       ├── guardduty-org/        # GuardDuty delegated admin (config managed by portfolio-aws-org-guardduty)
 │       ├── iam-password-policy/  # IAM password policy
 │       ├── s3-account-public-access-block/ # S3 account public access block
 │       ├── ssm-settings/         # SSM public sharing block
@@ -312,9 +312,9 @@ kms_cloudtrail, kms_config ─────────────────�
 - LAMBDA_CODE excluded in unsupported regions
 - Used by `inspector-regional.tf` to enable in all 17 regions for all 3 accounts
 
-**GuardDuty Enabler Module** - Single-region GuardDuty enablement:
-- Enables GuardDuty detector with S3 protection, K8s audit logs, malware protection
-- Used by `guardduty-regional.tf` to enable in all 17 regions for all 3 accounts
+**GuardDuty Org Module** - GuardDuty delegated admin registration:
+- Designates audit account as delegated administrator per region
+- GuardDuty detector enablement, org config, and protection plans managed by `portfolio-aws-org-guardduty`
 
 **Config Recorder Module** - Single-region Config recorder:
 - Reusable module for deploying Config recorder in any region

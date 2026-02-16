@@ -81,11 +81,6 @@ For each of the 17 target regions:
 - Identify delegated administrator
 - List enabled security standards
 
-**GuardDuty:**
-- Check for existing detectors
-- Identify delegated administrator
-- Get organization configuration status
-
 **Inspector:**
 - Check if Inspector is enabled
 - Identify delegated administrator
@@ -166,7 +161,7 @@ Terraform creates or updates the following resources:
 | CloudTrail | Organization trail, multi-region, KMS encryption, logs to log-archive |
 | AWS Config | Recorders in all 17 regions for core accounts, aggregator in audit |
 | Security Hub | Delegated admin, finding aggregation, configurable standards |
-| GuardDuty | Delegated admin per-region, all protection plans enabled |
+| GuardDuty | Delegated admin per-region (config managed by portfolio-aws-org-guardduty) |
 | Inspector | Delegated admin per-region, EC2/ECR/Lambda/Lambda Code scanning |
 
 **Account-Level Controls (All 3 Core Accounts):**
@@ -261,23 +256,6 @@ Only runs when `apply` action is used.
 
 **Note:** While Terraform configures auto-enable for new accounts, existing accounts need explicit enrollment.
 
-### GuardDuty Verification (`verify-guardduty.py`)
-
-**Purpose:** Validates GuardDuty organization configuration across all 17 regions.
-
-**Checks:**
-- GuardDuty service access enabled in Organizations
-- Delegated administrator correctly configured in all regions
-- Organization auto-enable configuration applied
-- Detectors enabled in management, log-archive, and audit accounts
-- Protection plans enabled:
-  - S3 Data Events
-  - Kubernetes Audit Logs
-  - Malware Protection
-  - Lambda Network Logs
-  - RDS Login Events
-  - Runtime Monitoring (EKS, ECS, EC2)
-
 ---
 
 ## Phase 5: Summary
@@ -300,7 +278,6 @@ Only runs when `apply` action is used.
 | `apply` | Full deployment (discovery + apply + post-deployment) |
 | `destroy` | Tear down all managed resources (use with caution) |
 | `shell` | Open interactive shell in container for debugging |
-| `state-cleanup` | Remove specific resources from Terraform state |
 
 ## State Management
 
@@ -338,7 +315,6 @@ Log Archive Account
 
 Audit Account (Delegated Admin)
 ├── Security Hub aggregator
-├── GuardDuty organization configuration
 ├── Inspector organization configuration
 ├── Config aggregator
 └── IAM Access Analyzer
@@ -346,7 +322,7 @@ Audit Account (Delegated Admin)
 Member Accounts
 ├── AWS Config (delivers to central bucket)
 ├── Security Hub (findings to aggregator)
-├── GuardDuty (managed by org config)
+├── GuardDuty (managed by portfolio-aws-org-guardduty)
 ├── Inspector (managed by org config)
 └── Account-level security controls
 ```

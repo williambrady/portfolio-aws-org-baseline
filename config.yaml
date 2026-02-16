@@ -11,16 +11,19 @@ resource_prefix: "ccoe"
 tags:
   owner: "william.brady"      # e.g., "platform-team" or "security-team"
   contact: "will@crofton.cloud"    # e.g., "platform@example.com"
+  repository: "https://github.com/williambrady/portfolio-aws-org-baseline"
 
 # Shared account configuration
 # Each account requires an explicit email address
 shared_accounts:
   log_archive:
     name: "Log Archive"
+    email: "will+rc-org26-log-archive@crofton.cloud"
     # email: "will+orgxxxx-log-archive@crofton.cloud"
 
   audit:
     name: "Audit"
+    email: "will+rc-org26-audit@crofton.cloud"
     # email: "will+orgxxxx-audit@crofton.cloud"
 
   # Optional: uncomment to create security tooling account
@@ -45,7 +48,7 @@ organizational_units:
 #   - bidirectional: Blocks both inbound and outbound internet access (most restrictive)
 #   - disabled: No VPC block public access restrictions (least secure)
 vpc_block_public_access:
-  mode: "disabled"
+  mode: "ingress"
 
 # AWS Account Alternate Contacts Configuration
 # These contacts will be applied to the management account and shared accounts (log-archive, audit)
