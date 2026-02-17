@@ -283,7 +283,7 @@ def cleanup_account_vpcs(account: dict, regions: list, current_account: str) -> 
             print(" skipped (dependencies)")
             account_result["has_skipped"] = True
         elif result.get("error"):
-            print(f" error ({result['error'][:80]})")
+            print(f" error ({str(result.get('error', ''))[:80]})")
             account_result["success"] = False
         else:
             print(" no default VPC")

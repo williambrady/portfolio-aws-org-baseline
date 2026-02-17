@@ -503,6 +503,8 @@ def discover_kms_keys(
         "kms_access_logs_arn": "",
         "kms_deployment_artifacts_exists": False,
         "kms_deployment_artifacts_arn": "",
+        "kms_deployment_logs_exists": False,
+        "kms_deployment_logs_arn": "",
         "kms_cloudtrail_exists": False,
         "kms_cloudtrail_arn": "",
         "kms_config_exists": False,
@@ -517,6 +519,10 @@ def discover_kms_keys(
         f"alias/{resource_prefix}-deployment-artifacts": (
             "kms_deployment_artifacts",
             "deployment-artifacts",
+        ),
+        f"alias/{resource_prefix}-deployment-logs": (
+            "kms_deployment_logs",
+            "deployment-logs",
         ),
     }
 

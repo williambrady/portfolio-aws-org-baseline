@@ -71,6 +71,45 @@ module "kms_deployment_artifacts" {
   common_tags = local.common_tags
 }
 
+# KMS key for deployment logs CloudWatch Log Group (management account)
+module "kms_deployment_logs" {
+  source = "./modules/kms"
+
+  alias_name  = "${var.resource_prefix}-deployment-logs"
+  description = "KMS key for deployment CloudWatch Log Group encryption"
+  service_principals = ["logs.${var.primary_region}.amazonaws.com"]
+  service_principal_actions = [
+    "kms:Encrypt*",
+    "kms:Decrypt*",
+    "kms:ReEncrypt*",
+    "kms:GenerateDataKey*",
+    "kms:Describe*"
+  ]
+  additional_policy_statements = [
+    {
+      Sid    = "AllowCloudWatchLogsEncryptionContext"
+      Effect = "Allow"
+      Principal = {
+        Service = "logs.${var.primary_region}.amazonaws.com"
+      }
+      Action = [
+        "kms:Encrypt*",
+        "kms:Decrypt*",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*",
+        "kms:Describe*"
+      ]
+      Resource = "*"
+      Condition = {
+        ArnLike = {
+          "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${var.primary_region}:${data.aws_caller_identity.current.account_id}:log-group:*"
+        }
+      }
+    }
+  ]
+  common_tags = local.common_tags
+}
+
 # KMS key for CloudTrail (log archive account) - only when creating CloudTrail
 module "kms_cloudtrail" {
   source = "./modules/kms"
@@ -281,6 +320,7 @@ module "s3_deployment_artifacts" {
 resource "aws_cloudwatch_log_group" "deployments" {
   name              = "/${var.resource_prefix}/deployments"
   retention_in_days = 365
+  kms_key_id        = module.kms_deployment_logs.key_arn
 
   tags = merge(local.common_tags, {
     Name = "${var.resource_prefix}-deployment-logs"

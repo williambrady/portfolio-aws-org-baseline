@@ -1434,14 +1434,32 @@ def sync_ssm_kms_resources(
 
 
 def sync_deployment_log_group(config: dict, state_resources: set):
-    """Sync the deployment CloudWatch Log Group into Terraform state."""
+    """Sync the deployment CloudWatch Log Group and its KMS key into Terraform state."""
     print("\n=== Syncing Deployment Log Group ===\n")
 
     resource_prefix = config["resource_prefix"]
     primary_region = config.get("primary_region", "us-east-1")
     log_group_name = f"/{resource_prefix}/deployments"
-    tf_address = "aws_cloudwatch_log_group.deployments"
 
+    # Sync KMS key for deployment logs
+    kms_key_address = "module.kms_deployment_logs.aws_kms_key.main"
+    kms_alias_address = "module.kms_deployment_logs.aws_kms_alias.main"
+    kms_alias_name = f"alias/{resource_prefix}-deployment-logs"
+
+    if not resource_exists_in_state(kms_key_address, state_resources):
+        try:
+            kms_client = boto3.client("kms", region_name=primary_region)
+            key_response = kms_client.describe_key(KeyId=kms_alias_name)
+            kms_key_id = key_response["KeyMetadata"]["KeyId"]
+            import_resource(kms_key_address, kms_key_id)
+            if not resource_exists_in_state(kms_alias_address, state_resources):
+                import_resource(kms_alias_address, kms_alias_name)
+        except ClientError as e:
+            if e.response["Error"]["Code"] != "NotFoundException":
+                print(f"  Warning: Could not check deployment-logs KMS key: {e}")
+
+    # Sync log group
+    tf_address = "aws_cloudwatch_log_group.deployments"
     if resource_exists_in_state(tf_address, state_resources):
         print(f"  {tf_address} already in state")
         return
