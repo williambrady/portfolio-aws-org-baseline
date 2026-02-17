@@ -75,8 +75,8 @@ module "kms_deployment_artifacts" {
 module "kms_deployment_logs" {
   source = "./modules/kms"
 
-  alias_name  = "${var.resource_prefix}-deployment-logs"
-  description = "KMS key for deployment CloudWatch Log Group encryption"
+  alias_name         = "${var.resource_prefix}-deployment-logs"
+  description        = "KMS key for deployment CloudWatch Log Group encryption"
   service_principals = ["logs.${var.primary_region}.amazonaws.com"]
   service_principal_actions = [
     "kms:Encrypt*",
