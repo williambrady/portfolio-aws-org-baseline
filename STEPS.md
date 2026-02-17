@@ -161,7 +161,7 @@ Terraform creates or updates the following resources:
 | CloudTrail | Organization trail, multi-region, KMS encryption, logs to log-archive |
 | AWS Config | Recorders in all 17 regions for core accounts, aggregator in audit |
 | Security Hub | Delegated admin, finding aggregation, configurable standards |
-| GuardDuty | Delegated admin per-region (config managed by portfolio-aws-org-guardduty) |
+| GuardDuty | Delegated admin registration (config managed by portfolio-aws-org-guardduty) |
 | Inspector | Delegated admin per-region, EC2/ECR/Lambda/Lambda Code scanning |
 
 **Account-Level Controls (All 3 Core Accounts):**

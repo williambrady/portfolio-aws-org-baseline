@@ -222,19 +222,27 @@ portfolio-aws-org-baseline/
 ├── discovery/
 │   ├── discover.py         # AWS discovery script
 │   ├── state_sync.py       # Terraform state synchronization
+│   ├── cloudwatch_logger.py  # CloudWatch deployment log streaming
 │   └── control_tower_regions.py  # Control Tower region governance
 ├── post-deployment/
-│   ├── verify.py           # Deployment verification
-│   ├── cleanup-default-vpcs.py
-│   └── enable-config-member-accounts.py  # Config enablement for member accounts
+│   ├── verify.py           # Core deployment verification
+│   ├── verify-regional-security.py  # Regional security settings verification
+│   ├── verify-security-hub.py       # Security Hub configuration verification
+│   ├── verify-config-recorders.py   # Config recorder verification
+│   ├── cleanup-default-vpcs.py      # Default VPC removal
+│   ├── enable-config-member-accounts.py  # Config enablement for member accounts
+│   └── enroll-inspector-members.py  # Inspector member enrollment
 ├── terraform/
 │   ├── main.tf             # Root module orchestration
 │   ├── variables.tf        # Variable definitions
 │   ├── outputs.tf          # Output definitions
 │   ├── providers.tf        # Provider configurations
 │   ├── versions.tf         # Version constraints
-│   ├── guardduty-regional.tf  # GuardDuty delegated admin (multi-region)
+│   ├── config-regional.tf     # Config recorder multi-region deployment
+│   ├── ec2-regional.tf        # EC2/EBS defaults multi-region deployment
 │   ├── inspector-regional.tf  # Inspector multi-region deployment
+│   ├── ssm-regional.tf        # SSM settings multi-region deployment
+│   ├── vpc-regional.tf        # VPC defaults multi-region deployment
 │   └── modules/
 │       ├── kms/            # KMS key management
 │       ├── s3/             # Reusable S3 bucket
@@ -249,12 +257,13 @@ portfolio-aws-org-baseline/
 │       ├── inspector-org/  # Per-region Inspector delegated admin
 │       ├── inspector-enabler/ # Single-region Inspector enabler
 │       ├── inspector-org-config/ # Per-region Inspector org configuration
-│       ├── guardduty-org/  # Per-region GuardDuty delegated admin
+│       ├── alternate-contacts/  # Alternate contact management
 │       ├── iam-password-policy/  # IAM password policy
 │       ├── s3-account-public-access-block/ # S3 account public access block
 │       ├── ssm-settings/   # SSM settings (public sharing block, CloudWatch logging)
 │       ├── ec2-defaults/   # EC2/EBS security defaults
 │       └── vpc-defaults/   # VPC block public access
+├── .dockerignore
 ├── Dockerfile
 └── Makefile
 ```
@@ -295,7 +304,7 @@ portfolio-aws-org-baseline/
   - EC2/ECR/Lambda scanning enabled in all regions
   - Lambda Code scanning in supported regions
   - Auto-enable configured for new member accounts
-- **GuardDuty**: Delegated admin configured per-region (17 regions). Detector enablement, org config, and protection plans managed by `portfolio-aws-org-guardduty`.
+- **GuardDuty**: Delegated admin registration (detector enablement, org config, and protection plans managed by `portfolio-aws-org-guardduty`)
 - **IAM Password Policy**: 24 char minimum, uppercase/lowercase/numbers/symbols required, 24 password history, admin reset on expiry
 - **SSM Settings**: Public sharing blocked, CloudWatch logging for Automation enabled with KMS encryption and 365-day retention in all 17 regions for all accounts
 - **EC2 Defaults**: EBS encryption by default (alias/aws/ebs), block EBS snapshot public access, IMDSv2 required with 2-hop limit
@@ -340,14 +349,8 @@ Organization-wide vulnerability scanning with a multi-module architecture:
 - Automatic Security Hub integration
 - Auto-enable for new member accounts
 
-### GuardDuty Module
-Registers the audit account as GuardDuty delegated administrator in all 17 regions.
-
-| Module | Account | Purpose |
-|--------|---------|---------|
-| `guardduty-org` | Management | Designate delegated admin (per-region) |
-
-Detector enablement, organization configuration, and protection plans are managed by `portfolio-aws-org-guardduty`.
+### GuardDuty
+Registers the audit account as GuardDuty delegated administrator at the organization level (single `aws_organizations_delegated_administrator` resource in the organization module). Detector enablement, organization configuration, and protection plans are managed by [`portfolio-aws-org-guardduty`](../portfolio-aws-org-guardduty).
 
 ### IAM Password Policy Module
 Account-level password policy:

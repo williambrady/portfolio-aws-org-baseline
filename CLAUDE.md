@@ -28,7 +28,7 @@ config.yaml → discover.py → bootstrap.auto.tfvars.json → state_sync.py →
 
 - **Management Account** - AWS Organization root, runs Terraform
 - **Log Archive Account** - Centralized logging (CloudTrail S3, Config)
-- **Audit Account** - Security services delegated admin (Security Hub, Config aggregator, Inspector)
+- **Audit Account** - Security services delegated admin (Security Hub, GuardDuty, Config aggregator, Inspector)
 
 ## Directory Structure
 
@@ -40,38 +40,48 @@ portfolio-aws-org-baseline/
 ├── discovery/
 │   ├── discover.py         # AWS discovery, generates tfvars
 │   ├── state_sync.py       # Terraform state synchronization
+│   ├── cloudwatch_logger.py  # CloudWatch deployment log streaming
 │   └── control_tower_regions.py  # Control Tower region governance helper
 ├── post-deployment/
 │   ├── verify.py           # Core deployment verification
 │   ├── verify-regional-security.py  # Regional security settings verification
 │   ├── verify-security-hub.py       # Security Hub configuration verification
 │   ├── verify-config-recorders.py   # Config recorder verification
-│   ├── cleanup-default-vpcs.py
-│   └── enable-config-member-accounts.py  # Config enablement for member accounts
+│   ├── cleanup-default-vpcs.py      # Default VPC removal
+│   ├── enable-config-member-accounts.py  # Config enablement for member accounts
+│   └── enroll-inspector-members.py  # Inspector member enrollment
 ├── terraform/
 │   ├── main.tf             # Root module - orchestrates child modules
 │   ├── variables.tf        # Variable definitions
 │   ├── outputs.tf          # Output definitions
 │   ├── providers.tf        # Provider configurations (default, log_archive, audit)
 │   ├── versions.tf         # Terraform/provider version constraints
+│   ├── config-regional.tf     # Config recorder multi-region deployment
+│   ├── ec2-regional.tf        # EC2/EBS defaults multi-region deployment
+│   ├── inspector-regional.tf  # Inspector multi-region deployment
+│   ├── ssm-regional.tf        # SSM settings multi-region deployment
+│   ├── vpc-regional.tf        # VPC defaults multi-region deployment
 │   └── modules/
 │       ├── kms/                  # Reusable KMS key with configurable policies
 │       ├── s3/                   # Reusable S3 bucket with access logging
 │       ├── s3-tfstate/           # Terraform state bucket
-│       ├── organization/         # AWS Org, OUs, delegated admins
+│       ├── organization/         # AWS Org, OUs, delegated admins (incl. GuardDuty)
 │       ├── accounts/             # Shared accounts (log-archive, audit)
 │       ├── security-hub/         # Security Hub org configuration
 │       ├── cloudtrail/           # Organization CloudTrail
 │       ├── config/               # AWS Config recorders/aggregator
 │       ├── config-recorder/      # Single-region Config recorder module
 │       ├── inspector/            # AWS Inspector org configuration
+│       ├── inspector-org/        # Per-region Inspector delegated admin
 │       ├── inspector-enabler/    # Single-region Inspector enabler
-│       ├── guardduty-org/        # GuardDuty delegated admin (config managed by portfolio-aws-org-guardduty)
+│       ├── inspector-org-config/ # Per-region Inspector org configuration
+│       ├── alternate-contacts/   # Alternate contact management
 │       ├── iam-password-policy/  # IAM password policy
 │       ├── s3-account-public-access-block/ # S3 account public access block
-│       ├── ssm-settings/         # SSM public sharing block
+│       ├── ssm-settings/         # SSM public sharing block, CloudWatch logging
 │       ├── ec2-defaults/         # EC2/EBS security defaults
 │       └── vpc-defaults/         # VPC block public access
+├── .dockerignore
 ├── Dockerfile
 └── Makefile
 ```
@@ -312,9 +322,9 @@ kms_cloudtrail, kms_config ─────────────────�
 - LAMBDA_CODE excluded in unsupported regions
 - Used by `inspector-regional.tf` to enable in all 17 regions for all 3 accounts
 
-**GuardDuty Org Module** - GuardDuty delegated admin registration:
-- Designates audit account as delegated administrator per region
-- GuardDuty detector enablement, org config, and protection plans managed by `portfolio-aws-org-guardduty`
+**GuardDuty** - Delegated admin registration at the organization level:
+- Single `aws_organizations_delegated_administrator` resource in the organization module
+- Detector enablement, org config, and protection plans managed by `portfolio-aws-org-guardduty`
 
 **Config Recorder Module** - Single-region Config recorder:
 - Reusable module for deploying Config recorder in any region
