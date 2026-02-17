@@ -2,8 +2,10 @@
 """
 Default VPC cleanup script for AWS Organization.
 Removes default VPCs from all accounts in the organization across all regions.
+Supports --dry-run to preview what would be deleted without making changes.
 """
 
+import argparse
 import sys
 
 import boto3
@@ -201,7 +203,55 @@ def delete_default_vpc(session: boto3.Session, region: str) -> dict:
     return result
 
 
-def cleanup_account_vpcs(account: dict, regions: list) -> dict:
+def scan_default_vpc(session: boto3.Session, region: str) -> dict:
+    """Check if a default VPC exists in a region without modifying anything.
+
+    Returns dict with:
+        - has_vpc: True if a default VPC exists
+        - has_dependencies: True if VPC has active ENIs
+        - vpc_id: The VPC ID if found
+    """
+    result = {
+        "region": region,
+        "has_vpc": False,
+        "has_dependencies": False,
+        "vpc_id": None,
+    }
+
+    ec2 = session.client("ec2", region_name=region)
+
+    try:
+        vpcs = ec2.describe_vpcs(Filters=[{"Name": "is-default", "Values": ["true"]}])[
+            "Vpcs"
+        ]
+
+        if not vpcs:
+            return result
+
+        result["has_vpc"] = True
+        result["vpc_id"] = vpcs[0]["VpcId"]
+
+        enis = ec2.describe_network_interfaces(
+            Filters=[{"Name": "vpc-id", "Values": [result["vpc_id"]]}]
+        )["NetworkInterfaces"]
+
+        if enis:
+            result["has_dependencies"] = True
+
+    except ClientError as e:
+        result["error"] = str(e)
+
+    return result
+
+
+def get_account_session(account_id: str, current_account: str, region: str):
+    """Get a boto3 session for the given account and region."""
+    if account_id == current_account:
+        return boto3.Session(region_name=region)
+    return assume_role(account_id, region)
+
+
+def cleanup_account_vpcs(account: dict, regions: list, current_account: str) -> dict:
     """Clean up default VPCs for a single account across all regions."""
     account_result = {
         "account_id": account["id"],
@@ -211,40 +261,89 @@ def cleanup_account_vpcs(account: dict, regions: list) -> dict:
         "has_skipped": False,
     }
 
-    # Get current account ID to skip management account
-    sts = boto3.client("sts")
-    current_account = sts.get_caller_identity()["Account"]
-
     for region in regions:
-        # For management account, use default credentials
-        if account["id"] == current_account:
-            session = boto3.Session(region_name=region)
-        else:
-            session = assume_role(account["id"], region)
-            if session is None:
-                account_result["regions"][region] = {
-                    "deleted": False,
-                    "skipped": False,
-                    "error": "Could not assume role",
-                }
-                account_result["success"] = False
-                continue
+        print(f"    {region}...", end="", flush=True)
+        session = get_account_session(account["id"], current_account, region)
+        if session is None:
+            account_result["regions"][region] = {
+                "deleted": False,
+                "skipped": False,
+                "error": "Could not assume role",
+            }
+            account_result["success"] = False
+            print(" error (could not assume role)")
+            continue
 
         result = delete_default_vpc(session, region)
         account_result["regions"][region] = result
 
-        if result.get("error"):
-            account_result["success"] = False
-        if result.get("skipped"):
+        if result.get("deleted"):
+            print(" deleted")
+        elif result.get("skipped"):
+            print(" skipped (dependencies)")
             account_result["has_skipped"] = True
+        elif result.get("error"):
+            print(f" error ({str(result.get('error', ''))[:80]})")
+            account_result["success"] = False
+        else:
+            print(" no default VPC")
+
+    return account_result
+
+
+def scan_account_vpcs(account: dict, regions: list, current_account: str) -> dict:
+    """Scan for default VPCs in a single account across all regions (dry-run)."""
+    account_result = {
+        "account_id": account["id"],
+        "account_name": account["name"],
+        "would_delete": [],
+        "would_skip": [],
+        "errors": [],
+    }
+
+    for region in regions:
+        print(f"    {region}...", end="", flush=True)
+        session = get_account_session(account["id"], current_account, region)
+        if session is None:
+            account_result["errors"].append(region)
+            print(" error (could not assume role)")
+            continue
+
+        result = scan_default_vpc(session, region)
+
+        if result.get("error"):
+            account_result["errors"].append(region)
+            print(f" error ({str(result['error'])[:80]})")
+        elif result["has_vpc"]:
+            if result["has_dependencies"]:
+                account_result["would_skip"].append(region)
+                print(f" has VPC {result['vpc_id']} (has dependencies, would skip)")
+            else:
+                account_result["would_delete"].append(region)
+                print(f" has VPC {result['vpc_id']} (would delete)")
+        else:
+            print(" no default VPC")
 
     return account_result
 
 
 def main():
     """Main cleanup function."""
+    parser = argparse.ArgumentParser(
+        description="Default VPC cleanup for AWS Organization"
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview what would be deleted without making changes",
+    )
+    args = parser.parse_args()
+
+    dry_run = args.dry_run
+    mode_label = "Preview (Dry Run)" if dry_run else "Cleanup"
+
     print("=" * 50)
-    print("  Default VPC Cleanup")
+    print(f"  Default VPC {mode_label}")
     print("=" * 50)
     print("")
 
@@ -264,7 +363,52 @@ def main():
         print("No accounts found. Is this the management account of an organization?")
         return 1
 
-    # Process accounts
+    sts = boto3.client("sts")
+    current_account = sts.get_caller_identity()["Account"]
+
+    if dry_run:
+        total_would_delete = 0
+        total_would_skip = 0
+        total_errors = 0
+
+        for account in accounts:
+            print(f"Scanning {account['name']} ({account['id']})...")
+
+            result = scan_account_vpcs(account, regions, current_account)
+
+            if result["would_delete"]:
+                print(
+                    f"  Would delete default VPCs in: {', '.join(result['would_delete'])}"
+                )
+                total_would_delete += len(result["would_delete"])
+            if result["would_skip"]:
+                print(
+                    f"  Would skip (has dependencies): {', '.join(result['would_skip'])}"
+                )
+                total_would_skip += len(result["would_skip"])
+            if result["errors"]:
+                print(f"  Could not access: {', '.join(result['errors'])}")
+                total_errors += len(result["errors"])
+            if (
+                not result["would_delete"]
+                and not result["would_skip"]
+                and not result["errors"]
+            ):
+                print("  No default VPCs found")
+
+        print("")
+        print("=" * 50)
+        print("  Dry Run Summary")
+        print("=" * 50)
+        print(f"  Accounts scanned: {len(accounts)}")
+        print(f"  Default VPCs to delete: {total_would_delete}")
+        print(f"  Would skip (dependencies): {total_would_skip}")
+        print(f"  Access errors: {total_errors}")
+        print("")
+        print("Dry run complete. Use without --dry-run to delete VPCs.")
+        return 0
+
+    # Apply mode
     total_deleted = 0
     total_skipped = 0
     total_errors = 0
@@ -272,7 +416,7 @@ def main():
     for account in accounts:
         print(f"Processing {account['name']} ({account['id']})...")
 
-        result = cleanup_account_vpcs(account, regions)
+        result = cleanup_account_vpcs(account, regions, current_account)
 
         deleted_regions = []
         skipped_regions = []

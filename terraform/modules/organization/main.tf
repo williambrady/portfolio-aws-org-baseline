@@ -23,6 +23,7 @@ resource "aws_organizations_organization" "main" {
 
   aws_service_access_principals = [
     "access-analyzer.amazonaws.com",
+    "account.amazonaws.com",
     "cloudtrail.amazonaws.com",
     "config.amazonaws.com",
     "guardduty.amazonaws.com",
@@ -49,9 +50,13 @@ data "aws_organizations_organization" "current" {
 resource "null_resource" "enable_service_access" {
   count = var.organization_exists && var.create_delegated_admins ? 1 : 0
 
+  triggers = {
+    services = "access-analyzer account cloudtrail config guardduty inspector2 malware-protection securityhub"
+  }
+
   provisioner "local-exec" {
     command = <<-EOT
-      for service in access-analyzer.amazonaws.com cloudtrail.amazonaws.com config.amazonaws.com guardduty.amazonaws.com inspector2.amazonaws.com malware-protection.guardduty.amazonaws.com securityhub.amazonaws.com; do
+      for service in access-analyzer.amazonaws.com account.amazonaws.com cloudtrail.amazonaws.com config.amazonaws.com guardduty.amazonaws.com inspector2.amazonaws.com malware-protection.guardduty.amazonaws.com securityhub.amazonaws.com; do
         aws organizations enable-aws-service-access --service-principal $service 2>/dev/null || true
       done
     EOT
@@ -180,6 +185,15 @@ resource "aws_organizations_delegated_administrator" "inspector" {
 
   account_id        = var.audit_account_id
   service_principal = "inspector2.amazonaws.com"
+
+  depends_on = [null_resource.enable_service_access]
+}
+
+resource "aws_organizations_delegated_administrator" "guardduty" {
+  count = var.create_delegated_admins ? 1 : 0
+
+  account_id        = var.audit_account_id
+  service_principal = "guardduty.amazonaws.com"
 
   depends_on = [null_resource.enable_service_access]
 }

@@ -78,6 +78,12 @@ resource "aws_s3_bucket_logging" "main" {
 
   target_bucket = var.access_logging_bucket
   target_prefix = var.access_logging_prefix != "" ? var.access_logging_prefix : "${var.bucket_name}/"
+
+  target_object_key_format {
+    partitioned_prefix {
+      partition_date_source = "EventTime"
+    }
+  }
 }
 
 # -----------------------------------------------------------------------------
