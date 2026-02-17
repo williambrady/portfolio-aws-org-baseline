@@ -213,6 +213,7 @@ def discover_delegated_admins(org_client) -> dict:
         "config.amazonaws.com",
         "access-analyzer.amazonaws.com",
         "inspector2.amazonaws.com",
+        "guardduty.amazonaws.com",
     ]
 
     for service in services:

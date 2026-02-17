@@ -188,3 +188,12 @@ resource "aws_organizations_delegated_administrator" "inspector" {
 
   depends_on = [null_resource.enable_service_access]
 }
+
+resource "aws_organizations_delegated_administrator" "guardduty" {
+  count = var.create_delegated_admins ? 1 : 0
+
+  account_id        = var.audit_account_id
+  service_principal = "guardduty.amazonaws.com"
+
+  depends_on = [null_resource.enable_service_access]
+}

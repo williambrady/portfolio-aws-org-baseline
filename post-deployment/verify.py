@@ -189,6 +189,7 @@ def verify_delegated_administrators(org_client) -> bool:
         ("config.amazonaws.com", "AWS Config"),
         ("access-analyzer.amazonaws.com", "IAM Access Analyzer"),
         ("inspector2.amazonaws.com", "Inspector"),
+        ("guardduty.amazonaws.com", "GuardDuty"),
     ]
 
     all_configured = True

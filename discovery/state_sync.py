@@ -758,6 +758,7 @@ def sync_delegated_admins(config: dict, state_resources: set):
     - module.organization.aws_organizations_delegated_administrator.config[0]
     - module.organization.aws_organizations_delegated_administrator.access_analyzer[0]
     - module.organization.aws_organizations_delegated_administrator.inspector[0]
+    - module.organization.aws_organizations_delegated_administrator.guardduty[0]
     """
     print("\n=== Syncing Delegated Administrators ===\n")
 
@@ -782,6 +783,7 @@ def sync_delegated_admins(config: dict, state_resources: set):
         ("config", "config.amazonaws.com"),
         ("access_analyzer", "access-analyzer.amazonaws.com"),
         ("inspector", "inspector2.amazonaws.com"),
+        ("guardduty", "guardduty.amazonaws.com"),
     ]
 
     for tf_name, service_principal in services:
