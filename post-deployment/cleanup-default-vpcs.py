@@ -238,8 +238,8 @@ def scan_default_vpc(session: boto3.Session, region: str) -> dict:
         if enis:
             result["has_dependencies"] = True
 
-    except ClientError:
-        pass
+    except ClientError as e:
+        result["error"] = str(e)
 
     return result
 
@@ -311,7 +311,10 @@ def scan_account_vpcs(account: dict, regions: list, current_account: str) -> dic
 
         result = scan_default_vpc(session, region)
 
-        if result["has_vpc"]:
+        if result.get("error"):
+            account_result["errors"].append(region)
+            print(f" error ({str(result['error'])[:80]})")
+        elif result["has_vpc"]:
             if result["has_dependencies"]:
                 account_result["would_skip"].append(region)
                 print(f" has VPC {result['vpc_id']} (has dependencies, would skip)")

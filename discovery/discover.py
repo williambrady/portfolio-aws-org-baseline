@@ -1501,10 +1501,6 @@ def main():
         "organization_config_exists": discovery.get(
             "organization_config_exists", False
         ),
-        # Deployment log group discovery
-        "deployment_log_group_exists": discovery.get(
-            "deployment_log_group_exists", False
-        ),
     }
 
     # Alternate contacts config - validate if enabled

@@ -198,11 +198,6 @@ variable "organization_config_exists" {
   default     = false
 }
 
-variable "deployment_log_group_exists" {
-  description = "Whether the deployment CloudWatch log group already exists (from discovery)"
-  type        = bool
-  default     = false
-}
 
 # -----------------------------------------------------------------------------
 # Alternate Contacts Configuration

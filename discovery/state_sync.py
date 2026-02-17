@@ -961,17 +961,29 @@ def sync_securityhub_accounts(
 
 
 def cleanup_guardduty_resources(state_resources: set):
-    """Remove GuardDuty resources from Terraform state.
+    """Remove deprecated GuardDuty module resources from Terraform state.
 
-    GuardDuty is managed by portfolio-aws-org-guardduty (separate project).
-    This cleanup removes any leftover GuardDuty resources from state to prevent
-    Terraform from trying to destroy them.
+    GuardDuty detector/config is managed by portfolio-aws-org-guardduty.
+    This cleanup removes leftover GuardDuty module resources from state to
+    prevent Terraform from trying to destroy them.
+
+    Does NOT remove the org-level delegated admin resource
+    (module.organization.aws_organizations_delegated_administrator.guardduty)
+    which is still managed by this project.
     """
     print("\n=== Cleaning Up GuardDuty Resources ===\n")
 
+    # Only remove resources from the deprecated guardduty modules, not
+    # the delegated admin in the organization module
+    guardduty_module_prefixes = (
+        "module.guardduty_org_",
+        "module.guardduty_enabler_",
+        "module.guardduty_org_config_",
+    )
+
     removed_count = 0
     for resource in sorted(state_resources):
-        if "guardduty" in resource.lower():
+        if resource.startswith(guardduty_module_prefixes):
             print(f"  Removing from state: {resource}")
             success, output = run_terraform_cmd(["state", "rm", resource])
             if success or "No matching objects" in output:
