@@ -211,7 +211,12 @@ def scan_default_vpc(session: boto3.Session, region: str) -> dict:
         - has_dependencies: True if VPC has active ENIs
         - vpc_id: The VPC ID if found
     """
-    result = {"region": region, "has_vpc": False, "has_dependencies": False, "vpc_id": None}
+    result = {
+        "region": region,
+        "has_vpc": False,
+        "has_dependencies": False,
+        "vpc_id": None,
+    }
 
     ec2 = session.client("ec2", region_name=region)
 
@@ -321,7 +326,9 @@ def scan_account_vpcs(account: dict, regions: list, current_account: str) -> dic
 
 def main():
     """Main cleanup function."""
-    parser = argparse.ArgumentParser(description="Default VPC cleanup for AWS Organization")
+    parser = argparse.ArgumentParser(
+        description="Default VPC cleanup for AWS Organization"
+    )
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -367,7 +374,9 @@ def main():
             result = scan_account_vpcs(account, regions, current_account)
 
             if result["would_delete"]:
-                print(f"  Would delete default VPCs in: {', '.join(result['would_delete'])}")
+                print(
+                    f"  Would delete default VPCs in: {', '.join(result['would_delete'])}"
+                )
                 total_would_delete += len(result["would_delete"])
             if result["would_skip"]:
                 print(
@@ -377,7 +386,11 @@ def main():
             if result["errors"]:
                 print(f"  Could not access: {', '.join(result['errors'])}")
                 total_errors += len(result["errors"])
-            if not result["would_delete"] and not result["would_skip"] and not result["errors"]:
+            if (
+                not result["would_delete"]
+                and not result["would_skip"]
+                and not result["errors"]
+            ):
                 print("  No default VPCs found")
 
         print("")

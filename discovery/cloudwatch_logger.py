@@ -61,7 +61,7 @@ def main():
                     batch = []
                     batch_bytes = 0
                     last_flush = time.time()
-                new_stream = stripped[len(STREAM_SENTINEL) :]
+                new_stream = stripped.removeprefix(STREAM_SENTINEL)
                 _create_stream(client, log_group, new_stream)
                 current_stream = new_stream
                 continue
@@ -102,9 +102,7 @@ def main():
 def _create_stream(client, log_group, log_stream):
     """Create a CloudWatch log stream. Best-effort, never raises."""
     try:
-        client.create_log_stream(
-            logGroupName=log_group, logStreamName=log_stream
-        )
+        client.create_log_stream(logGroupName=log_group, logStreamName=log_stream)
     except Exception:
         pass
 

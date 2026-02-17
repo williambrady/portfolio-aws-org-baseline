@@ -569,13 +569,9 @@ def discover_kms_keys(
                     if e.response["Error"]["Code"] != "NotFoundException":
                         print(f"    Warning: Could not check {label} key: {e}")
         except ClientError as e:
-            print(
-                f"    Warning: Could not check KMS keys in log-archive account: {e}"
-            )
+            print(f"    Warning: Could not check KMS keys in log-archive account: {e}")
 
-    found_any = any(
-        result[k] for k in result if k.endswith("_exists")
-    )
+    found_any = any(result[k] for k in result if k.endswith("_exists"))
     if not found_any:
         print("    (no baseline KMS keys found)")
 

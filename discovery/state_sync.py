@@ -1134,18 +1134,14 @@ def sync_cloudtrail_resources(config: dict, state_resources: set):
     # 4. IAM role for CloudTrail to CloudWatch Logs - in management account
     role_name = f"{resource_prefix}-cloudtrail-cloudwatch-role"
     role_tf_address = "module.cloudtrail[0].aws_iam_role.cloudtrail_cloudwatch"
-    policy_tf_address = (
-        "module.cloudtrail[0].aws_iam_role_policy.cloudtrail_cloudwatch"
-    )
+    policy_tf_address = "module.cloudtrail[0].aws_iam_role_policy.cloudtrail_cloudwatch"
 
     if not resource_exists_in_state(role_tf_address, state_resources):
         iam_client = boto3.client("iam")
         try:
             iam_client.get_role(RoleName=role_name)
             print(f"  Importing {role_tf_address}...")
-            success, output = run_terraform_cmd(
-                ["import", role_tf_address, role_name]
-            )
+            success, output = run_terraform_cmd(["import", role_tf_address, role_name])
             if success:
                 print("    Imported successfully")
                 imported_count += 1
