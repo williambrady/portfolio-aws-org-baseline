@@ -174,6 +174,14 @@ Terraform creates or updates the following resources:
 | EC2 Defaults | EBS encryption, snapshot blocking, IMDSv2 required |
 | VPC Block Public Access | Configurable mode (ingress/bidirectional/disabled) |
 
+**SSM Parameter Store (Cross-Project Config Sharing):**
+
+| Parameter | Account | Purpose |
+|-----------|---------|---------|
+| `/{prefix}/org-baseline/config` | Management | JSON blob with org config for downstream projects |
+
+Published values: `resource_prefix`, `primary_region`, `management_account_id`, `audit_account_id`, `log_archive_account_id`, `organization_id`, `tfstate_bucket_name`, `tags`. Only created in Phase 2 (when shared accounts exist). Consumed by `portfolio-aws-org-guardduty` during discovery to auto-populate account IDs and tags.
+
 **Delegated Administrators (in Audit Account):**
 - Security Hub
 - GuardDuty
@@ -306,6 +314,7 @@ Management Account
 ├── AWS Organization
 ├── CloudTrail (organization trail)
 ├── State bucket
+├── SSM Parameter (org config for cross-project sharing)
 └── Delegates admin to Audit Account
 
 Log Archive Account

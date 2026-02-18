@@ -227,6 +227,15 @@ output "inspector_delegated_admin" {
 # regionally via the inspector-org-config module in inspector-regional.tf.
 
 # -----------------------------------------------------------------------------
+# SSM Parameter Store
+# -----------------------------------------------------------------------------
+
+output "org_config_ssm_parameter_name" {
+  description = "SSM parameter path containing org-baseline config for cross-project consumption"
+  value       = length(aws_ssm_parameter.org_config) > 0 ? aws_ssm_parameter.org_config[0].name : null
+}
+
+# -----------------------------------------------------------------------------
 # Deployment Status
 # -----------------------------------------------------------------------------
 
