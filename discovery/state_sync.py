@@ -1494,6 +1494,39 @@ def sync_deployment_log_group(config: dict, state_resources: set):
         pass
 
 
+def sync_org_config_kms(config: dict, state_resources: set):
+    """Sync KMS key and alias for SSM org-config parameter into Terraform state."""
+    print("\n=== Syncing Org Config KMS Resources ===\n")
+
+    resource_prefix = config["resource_prefix"]
+    primary_region = config.get("primary_region", "us-east-1")
+
+    kms_key_address = "module.kms_org_config.aws_kms_key.main"
+    kms_alias_address = "module.kms_org_config.aws_kms_alias.main"
+    kms_alias_name = f"alias/{resource_prefix}-org-config"
+
+    if not resource_exists_in_state(kms_key_address, state_resources):
+        try:
+            kms_client = boto3.client("kms", region_name=primary_region)
+            key_response = kms_client.describe_key(KeyId=kms_alias_name)
+            kms_key_id = key_response["KeyMetadata"]["KeyId"]
+            import_resource(kms_key_address, kms_key_id)
+            if not resource_exists_in_state(kms_alias_address, state_resources):
+                import_resource(kms_alias_address, kms_alias_name)
+        except ClientError as e:
+            if e.response["Error"]["Code"] != "NotFoundException":
+                print(f"  Warning: Could not check org-config KMS key: {e}")
+    else:
+        print(f"  {kms_key_address} already in state")
+        if not resource_exists_in_state(kms_alias_address, state_resources):
+            try:
+                kms_client = boto3.client("kms", region_name=primary_region)
+                kms_client.describe_key(KeyId=kms_alias_name)
+                import_resource(kms_alias_address, kms_alias_name)
+            except ClientError:
+                pass
+
+
 def main():
     """Main state sync function."""
     print("=" * 50)
@@ -1552,6 +1585,9 @@ def main():
 
     # Sync deployment log group
     sync_deployment_log_group(config, state_resources)
+
+    # Sync org-config KMS key
+    sync_org_config_kms(config, state_resources)
 
     # Write accumulated import blocks to imports.tf
     write_import_blocks()

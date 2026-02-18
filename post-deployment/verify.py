@@ -12,6 +12,7 @@ Checks performed:
 - KMS keys exist and are enabled
 - S3 buckets exist with correct configuration
 - IAM password policies are applied
+- SSM Parameter Store contains org config for cross-project sharing
 """
 
 import json
@@ -511,6 +512,85 @@ def verify_iam_password_policy(
     return all_ok
 
 
+def verify_ssm_org_config(
+    region: str,
+    resource_prefix: str,
+    mgmt_account_id: str,
+    audit_account_id: str,
+    log_archive_account_id: str,
+) -> bool:
+    """Verify SSM Parameter Store contains org-baseline config for cross-project sharing."""
+    print("Verifying SSM Org Config Parameter...")
+
+    ssm_path = f"/{resource_prefix}/org-baseline/config"
+    ssm_client = boto3.client("ssm", region_name=region)
+
+    try:
+        response = ssm_client.get_parameter(Name=ssm_path, WithDecryption=True)
+        param = response["Parameter"]
+        print(f"  [+] Parameter exists: {ssm_path}")
+
+        param_type = param.get("Type", "")
+        if param_type == "SecureString":
+            print(f"  [+] Parameter type: {param_type}")
+        else:
+            print(f"  [-] Parameter type: {param_type} (expected SecureString)")
+            return False
+
+        try:
+            value = json.loads(param["Value"])
+        except (json.JSONDecodeError, KeyError):
+            print("  [-] Parameter value is not valid JSON")
+            return False
+
+        all_ok = True
+        required_keys = [
+            "resource_prefix",
+            "primary_region",
+            "management_account_id",
+            "audit_account_id",
+            "log_archive_account_id",
+            "organization_id",
+            "tfstate_bucket_name",
+            "tags",
+        ]
+
+        missing_keys = [k for k in required_keys if k not in value]
+        if missing_keys:
+            print(f"  [-] Missing keys: {', '.join(missing_keys)}")
+            all_ok = False
+        else:
+            print(f"  [+] All required keys present ({len(required_keys)})")
+
+        expected_values = {
+            "resource_prefix": resource_prefix,
+            "primary_region": region,
+            "management_account_id": mgmt_account_id,
+        }
+        if audit_account_id:
+            expected_values["audit_account_id"] = audit_account_id
+        if log_archive_account_id:
+            expected_values["log_archive_account_id"] = log_archive_account_id
+
+        for key, expected in expected_values.items():
+            actual = value.get(key, "")
+            if actual == expected:
+                print(f"  [+] {key}: {actual}")
+            else:
+                print(f"  [-] {key}: expected '{expected}', got '{actual}'")
+                all_ok = False
+
+        return all_ok
+
+    except ClientError as e:
+        code = e.response["Error"]["Code"]
+        if code == "ParameterNotFound":
+            print(f"  [-] Parameter not found: {ssm_path}")
+        else:
+            print(f"  [-] Error reading parameter: {e}")
+        return False
+
+
 def verify_s3_public_access_block(
     region: str,
     mgmt_account_id: str,
@@ -687,6 +767,22 @@ def main():
                     mgmt_account_id,
                     log_archive_account_id,
                     audit_account_id,
+                ),
+            )
+        )
+        print("")
+
+    # Verify SSM org config parameter (only when accounts exist / Phase 2)
+    if resource_prefix and mgmt_account_id and audit_account_id:
+        results.append(
+            (
+                "SSM Org Config Parameter",
+                verify_ssm_org_config(
+                    primary_region,
+                    resource_prefix,
+                    mgmt_account_id,
+                    audit_account_id,
+                    log_archive_account_id,
                 ),
             )
         )

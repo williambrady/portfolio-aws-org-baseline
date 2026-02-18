@@ -143,6 +143,10 @@ Terraform creates or updates the following resources:
 | Key | Account | Purpose |
 |-----|---------|---------|
 | `{prefix}-tfstate` | Management | Terraform state encryption |
+| `{prefix}-access-logs` | Management | Access logs bucket encryption |
+| `{prefix}-deployment-artifacts` | Management | Deployment artifacts bucket encryption |
+| `{prefix}-deployment-logs` | Management | Deployment CloudWatch Log Group encryption |
+| `{prefix}-org-config` | Management | SSM org-config parameter encryption |
 | `{prefix}-cloudtrail` | Log Archive | CloudTrail log encryption |
 | `{prefix}-config` | Log Archive | Config snapshot encryption |
 
@@ -173,6 +177,14 @@ Terraform creates or updates the following resources:
 | SSM Settings | Block public sharing, CloudWatch logging with KMS |
 | EC2 Defaults | EBS encryption, snapshot blocking, IMDSv2 required |
 | VPC Block Public Access | Configurable mode (ingress/bidirectional/disabled) |
+
+**SSM Parameter Store (Cross-Project Config Sharing):**
+
+| Parameter | Account | Purpose |
+|-----------|---------|---------|
+| `/{prefix}/org-baseline/config` | Management | JSON blob with org config for downstream projects |
+
+Published values: `resource_prefix`, `primary_region`, `management_account_id`, `audit_account_id`, `log_archive_account_id`, `organization_id`, `tfstate_bucket_name`, `tags`. Stored as `SecureString` with a dedicated KMS key (`{prefix}-org-config`). Only created in Phase 2 (when shared accounts exist). Consumed by `portfolio-aws-org-guardduty` during discovery to auto-populate account IDs and tags.
 
 **Delegated Administrators (in Audit Account):**
 - Security Hub
@@ -306,6 +318,7 @@ Management Account
 ├── AWS Organization
 ├── CloudTrail (organization trail)
 ├── State bucket
+├── SSM Parameter (org config for cross-project sharing, KMS encrypted)
 └── Delegates admin to Audit Account
 
 Log Archive Account
