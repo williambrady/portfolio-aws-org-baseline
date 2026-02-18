@@ -4,11 +4,21 @@
 # (e.g., portfolio-aws-org-guardduty reads this to auto-discover account IDs)
 # -----------------------------------------------------------------------------
 
+# KMS key for SSM org-config parameter encryption (management account)
+module "kms_org_config" {
+  source = "./modules/kms"
+
+  alias_name  = "${var.resource_prefix}-org-config"
+  description = "KMS key for SSM org-config parameter encryption"
+  common_tags = local.common_tags
+}
+
 resource "aws_ssm_parameter" "org_config" {
   count = local.accounts_exist ? 1 : 0
 
-  name = "/${var.resource_prefix}/org-baseline/config"
-  type = "String"
+  name   = "/${var.resource_prefix}/org-baseline/config"
+  type   = "SecureString"
+  key_id = module.kms_org_config.key_arn
   value = jsonencode({
     resource_prefix        = var.resource_prefix
     primary_region         = var.primary_region

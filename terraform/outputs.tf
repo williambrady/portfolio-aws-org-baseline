@@ -235,6 +235,11 @@ output "org_config_ssm_parameter_name" {
   value       = length(aws_ssm_parameter.org_config) > 0 ? aws_ssm_parameter.org_config[0].name : null
 }
 
+output "org_config_kms_key_arn" {
+  description = "The KMS key ARN for SSM org-config parameter encryption"
+  value       = module.kms_org_config.key_arn
+}
+
 # -----------------------------------------------------------------------------
 # Deployment Status
 # -----------------------------------------------------------------------------
@@ -287,6 +292,7 @@ output "organization_summary" {
       deployment_artifacts = module.kms_deployment_artifacts.key_arn
       cloudtrail           = length(module.kms_cloudtrail) > 0 ? module.kms_cloudtrail[0].key_arn : null
       config               = length(module.kms_config) > 0 ? module.kms_config[0].key_arn : null
+      org_config           = module.kms_org_config.key_arn
     }
     deployment_log_group = aws_cloudwatch_log_group.deployments.name
     iam_password_policy = {

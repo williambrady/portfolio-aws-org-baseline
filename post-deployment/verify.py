@@ -526,9 +526,16 @@ def verify_ssm_org_config(
     ssm_client = boto3.client("ssm", region_name=region)
 
     try:
-        response = ssm_client.get_parameter(Name=ssm_path)
+        response = ssm_client.get_parameter(Name=ssm_path, WithDecryption=True)
         param = response["Parameter"]
         print(f"  [+] Parameter exists: {ssm_path}")
+
+        param_type = param.get("Type", "")
+        if param_type == "SecureString":
+            print(f"  [+] Parameter type: {param_type}")
+        else:
+            print(f"  [-] Parameter type: {param_type} (expected SecureString)")
+            return False
 
         try:
             value = json.loads(param["Value"])
