@@ -48,8 +48,14 @@ if [ -z "${RESOURCE_PREFIX}" ]; then
     echo -e "${RED}Error: resource_prefix is required in config.yaml${NC}"
     exit 1
 fi
+DEPLOYMENT_NAME=$(python3 -c "import yaml; v=yaml.safe_load(open('/work/config.yaml')).get('deployment_name'); print(v if v else '')" 2>/dev/null)
+if [ -z "${DEPLOYMENT_NAME}" ]; then
+    echo -e "${RED}Error: deployment_name is required in config.yaml${NC}"
+    exit 1
+fi
 echo -e "${GREEN}Primary region: ${PRIMARY_REGION}${NC}"
 echo -e "${GREEN}Resource prefix: ${RESOURCE_PREFIX}${NC}"
+echo -e "${GREEN}Deployment name: ${DEPLOYMENT_NAME}${NC}"
 echo ""
 
 # Parse command line arguments (needed early for artifact timestamp)
@@ -58,14 +64,14 @@ TERRAFORM_ARGS="${@:2}"
 
 # Artifact collection setup
 DEPLOY_TIMESTAMP=$(date -u +"%Y-%m-%d-%H-%M-%S")
-ARTIFACT_TIMESTAMP=$(date -u +"%Y/%m/%d/%H%M%S-portfolio-aws-org-baseline")
+ARTIFACT_TIMESTAMP=$(date -u +"%Y/%m/%d/%H%M%S-${DEPLOYMENT_NAME}")
 ARTIFACT_DIR="/tmp/artifacts"
 mkdir -p "${ARTIFACT_DIR}"
 ARTIFACTS_BUCKET="${RESOURCE_PREFIX}-deployment-artifacts-${ACCOUNT_ID}"
 
 # Deployment logging to CloudWatch Logs (always enabled)
 # Log group is managed by Terraform (aws_cloudwatch_log_group.deployments)
-CW_LOG_GROUP="/${RESOURCE_PREFIX}/deployments"
+CW_LOG_GROUP="/${RESOURCE_PREFIX}/deployments/${DEPLOYMENT_NAME}"
 CW_LOG_PREFIX="${DEPLOY_TIMESTAMP}"
 CW_INITIAL_STREAM="${CW_LOG_PREFIX}/config"
 echo -e "${YELLOW}Streaming deployment logs to CloudWatch Logs${NC}"
@@ -141,6 +147,7 @@ trap upload_artifacts EXIT
     echo ""
     echo "Effective Settings:"
     echo "  resource_prefix:    ${RESOURCE_PREFIX}"
+    echo "  deployment_name:    ${DEPLOYMENT_NAME}"
     echo "  primary_region:     ${PRIMARY_REGION}"
     echo "  vpc_block_mode:     ${VPC_BLOCK_MODE} (source: ${VPC_BLOCK_MODE_SOURCE})"
     echo ""

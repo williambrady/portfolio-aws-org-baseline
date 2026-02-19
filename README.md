@@ -59,6 +59,9 @@ Edit `config.yaml` with your settings:
 # Required: Prefix for all resource names (S3 buckets, KMS keys, etc.)
 resource_prefix: "myorg"
 
+# Required: Deployment name (used in CloudWatch log group path)
+deployment_name: "portfolio-aws-org-baseline"
+
 # Required: Primary AWS region for state bucket and finding aggregation
 primary_region: "us-east-1"
 
@@ -138,6 +141,11 @@ Edit `config.yaml` to customize the baseline:
 # Used for: S3 buckets, KMS keys, CloudTrail, etc.
 # Example resources: {prefix}-tfstate-{account_id}, {prefix}-cloudtrail-logs
 resource_prefix: "myorg"
+
+# REQUIRED: Deployment name for CloudWatch log group path
+# Log group: /{resource_prefix}/deployments/{deployment_name}
+# Allows multiple portfolio projects to have separate deployment logs
+deployment_name: "portfolio-aws-org-baseline"
 
 # REQUIRED: Primary AWS region
 # - Terraform state bucket location

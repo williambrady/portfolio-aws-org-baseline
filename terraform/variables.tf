@@ -15,6 +15,11 @@ variable "primary_region" {
   default     = "us-east-1"
 }
 
+variable "deployment_name" {
+  description = "Name of this deployment project (used in CloudWatch log group path)"
+  type        = string
+}
+
 # -----------------------------------------------------------------------------
 # Discovery Variables (populated by discover.py)
 # -----------------------------------------------------------------------------

@@ -19,6 +19,7 @@ Before running the tool, ensure:
 3. Load configuration from `config.yaml`:
    - `primary_region` - Primary AWS region for state and aggregation
    - `resource_prefix` - Prefix for all resource names
+   - `deployment_name` - Project name for CloudWatch log group path (`/{resource_prefix}/deployments/{deployment_name}`)
    - `vpc_block_public_access.mode` - VPC blocking mode (can be overridden via `VPC_BLOCK_MODE` env var)
 
 ### Step 1: State Bucket Setup
