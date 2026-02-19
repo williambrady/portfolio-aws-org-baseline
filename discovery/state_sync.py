@@ -1451,7 +1451,8 @@ def sync_deployment_log_group(config: dict, state_resources: set):
 
     resource_prefix = config["resource_prefix"]
     primary_region = config.get("primary_region", "us-east-1")
-    log_group_name = f"/{resource_prefix}/deployments"
+    deployment_name = config["deployment_name"]
+    log_group_name = f"/{resource_prefix}/deployments/{deployment_name}"
 
     # Sync KMS key for deployment logs
     kms_key_address = "module.kms_deployment_logs.aws_kms_key.main"

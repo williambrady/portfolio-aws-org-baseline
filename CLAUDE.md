@@ -125,6 +125,7 @@ AWS_PROFILE=my-profile VPC_BLOCK_MODE=disabled make apply
 Edit `config.yaml` to customize:
 
 - `resource_prefix` - Prefix for all resource names (S3 buckets, KMS keys, etc.). **Required.**
+- `deployment_name` - Name of this deployment project. Used in the CloudWatch log group path (`/{resource_prefix}/deployments/{deployment_name}`), allowing multiple portfolio projects to have separate deployment logs under the same prefix. **Required.**
 - `primary_region` - Primary AWS region (findings consolidated here)
 - `tags` - Custom tags applied to all resources (e.g., owner, contact)
 - `shared_accounts` - Log archive and audit account details. Email is required only for new accounts; existing accounts auto-detect email from AWS.

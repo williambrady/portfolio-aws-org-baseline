@@ -1329,7 +1329,8 @@ def main():
 
     # Discover deployment log group
     print("Deployment Log Group:")
-    deployment_lg_name = f"/{resource_prefix}/deployments"
+    deployment_name = config["deployment_name"]
+    deployment_lg_name = f"/{resource_prefix}/deployments/{deployment_name}"
     try:
         logs_client = boto3.client("logs", region_name=primary_region)
         response = logs_client.describe_log_groups(
@@ -1499,6 +1500,8 @@ def main():
         "custom_tags": {k: v for k, v in config.get("tags", {}).items() if v},
         # VPC block public access config
         "vpc_block_public_access_mode": vpc_block_public_access_mode,
+        # Deployment name for CloudWatch log group
+        "deployment_name": config["deployment_name"],
         # Control Tower discovery
         "control_tower_exists": discovery.get("control_tower_exists", False),
         # CloudTrail discovery

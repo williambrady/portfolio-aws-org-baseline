@@ -318,12 +318,12 @@ module "s3_deployment_artifacts" {
 # -----------------------------------------------------------------------------
 
 resource "aws_cloudwatch_log_group" "deployments" {
-  name              = "/${var.resource_prefix}/deployments"
+  name              = "/${var.resource_prefix}/deployments/${var.deployment_name}"
   retention_in_days = 365
   kms_key_id        = module.kms_deployment_logs.key_arn
 
   tags = merge(local.common_tags, {
-    Name = "${var.resource_prefix}-deployment-logs"
+    Name = "${var.resource_prefix}-deployments-${var.deployment_name}"
   })
 
   lifecycle {

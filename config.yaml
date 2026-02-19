@@ -7,6 +7,9 @@ primary_region: "us-east-1"
 # Resource prefix for all resource names (S3 buckets, KMS keys, etc.)
 resource_prefix: "ccoe"
 
+# Deployment name (used in CloudWatch log group path: /{resource_prefix}/deployments/{deployment_name})
+deployment_name: "portfolio-aws-org-baseline"
+
 # Tags applied to all resources created by this baseline
 tags:
   owner: "william.brady"      # e.g., "platform-team" or "security-team"
