@@ -21,12 +21,10 @@ tags:
 shared_accounts:
   log_archive:
     name: "Log Archive"
-    email: "will+rc-org26-log-archive@crofton.cloud"
     # email: "will+orgxxxx-log-archive@crofton.cloud"
 
   audit:
     name: "Audit"
-    email: "will+rc-org26-audit@crofton.cloud"
     # email: "will+orgxxxx-audit@crofton.cloud"
 
   # Optional: uncomment to create security tooling account
@@ -93,6 +91,9 @@ security_hub:
   disabled_controls:
     - CloudFormation.3  # CloudFormation stacks should have termination protection enabled
     - CloudFormation.4  # CloudFormation stacks should have associated service roles
-    - S3.15             # S3 buckets should use Object Lock
+    - IAM.18            # Ensure a support role has been created to manage incidents with AWS Support
     - Macie.1           # Macie should be enabled
+    - S3.7              # S3 general purpose buckets should use cross-Region replication
+    - S3.11             # S3 general purpose buckets should have event notifications enabled
+    - S3.15             # S3 general purpose buckets should have Object Lock enabled
     # - EC2.172           # EC2 VPC Block Public Access settings should block internet gateway traffic

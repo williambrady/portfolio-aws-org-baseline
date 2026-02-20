@@ -257,21 +257,29 @@ def verify_kms_keys(
 
     all_ok = True
 
-    # Check tfstate key in management account
+    # Check management account keys
     print("  Checking management account...")
     try:
         kms_client = boto3.client("kms", region_name=region)
-        alias_name = f"alias/{resource_prefix}-tfstate-key"
-        try:
-            response = kms_client.describe_key(KeyId=alias_name)
-            key_state = response["KeyMetadata"]["KeyState"]
-            if key_state == "Enabled":
-                print("    [+] tfstate-key: Enabled")
-            else:
-                print(f"    [!] tfstate-key: {key_state}")
+        mgmt_keys = [
+            ("tfstate", f"alias/{resource_prefix}-tfstate"),
+            ("access-logs", f"alias/{resource_prefix}-access-logs"),
+            ("deployment-artifacts", f"alias/{resource_prefix}-deployment-artifacts"),
+            ("deployment-logs", f"alias/{resource_prefix}-deployment-logs"),
+            ("org-config", f"alias/{resource_prefix}-org-config"),
+        ]
+        for key_label, alias_name in mgmt_keys:
+            try:
+                response = kms_client.describe_key(KeyId=alias_name)
+                key_state = response["KeyMetadata"]["KeyState"]
+                if key_state == "Enabled":
+                    print(f"    [+] {key_label}: Enabled")
+                else:
+                    print(f"    [!] {key_label}: {key_state}")
+                    all_ok = False
+            except kms_client.exceptions.NotFoundException:
+                print(f"    [!] {key_label}: Not found")
                 all_ok = False
-        except kms_client.exceptions.NotFoundException:
-            print("    [!] tfstate-key: Not found (may be Control Tower env)")
     except ClientError as e:
         print(f"    [-] Error checking management KMS: {e}")
         all_ok = False
@@ -294,18 +302,21 @@ def verify_kms_keys(
                 aws_session_token=creds["SessionToken"],
             )
 
-            for key_name in ["cloudtrail-key", "config-key"]:
-                alias_name = f"alias/{resource_prefix}-{key_name}"
+            log_keys = [
+                ("cloudtrail", f"alias/{resource_prefix}-cloudtrail"),
+                ("config", f"alias/{resource_prefix}-config"),
+            ]
+            for key_label, alias_name in log_keys:
                 try:
                     response = log_kms_client.describe_key(KeyId=alias_name)
                     key_state = response["KeyMetadata"]["KeyState"]
                     if key_state == "Enabled":
-                        print(f"    [+] {key_name}: Enabled")
+                        print(f"    [+] {key_label}: Enabled")
                     else:
-                        print(f"    [!] {key_name}: {key_state}")
+                        print(f"    [!] {key_label}: {key_state}")
                         all_ok = False
                 except log_kms_client.exceptions.NotFoundException:
-                    print(f"    [!] {key_name}: Not found (may be Control Tower env)")
+                    print(f"    [!] {key_label}: Not found (may be Control Tower env)")
         except ClientError as e:
             print(f"    [-] Error checking log-archive KMS: {e}")
             all_ok = False
